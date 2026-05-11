@@ -23,6 +23,7 @@ const state = {
   tasks: [],
   sourceMode: runtimeConfig.dataMode || "local",
   sourceLabel: "",
+  lastSyncedAt: "",
   editorTaskId: null,
   search: "",
   filters: {
@@ -52,6 +53,7 @@ const els = {
   lastSyncText: document.getElementById("lastSyncText"),
   addTaskButton: document.getElementById("addTaskButton"),
   seedCloudButton: document.getElementById("seedCloudButton"),
+  syncCloudButton: document.getElementById("syncCloudButton"),
   modal: document.getElementById("taskModal"),
   modalTitle: document.getElementById("modalTitle"),
   modalCloseButton: document.getElementById("modalCloseButton"),
@@ -63,6 +65,10 @@ const els = {
 function toIsoDate(input) {
   if (!input) return null;
   return /^\d{4}-\d{2}-\d{2}$/.test(input) ? input : null;
+}
+
+function isSupabaseMode() {
+  return Boolean(runtimeConfig.dataMode === "supabase" && runtimeConfig.supabaseUrl && runtimeConfig.supabaseAnonKey);
 }
 
 function slug(text) {
@@ -215,6 +221,22 @@ async function createSupabaseTask(task) {
   return rows[0];
 }
 
+async function upsertSupabaseTasks(tasks) {
+  const { supabaseUrl, supabaseAnonKey, supabaseTable = "opening_tasks" } = runtimeConfig;
+  const response = await fetch(`${supabaseUrl}/rest/v1/${supabaseTable}`, {
+    method: "POST",
+    headers: {
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${supabaseAnonKey}`,
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=representation",
+    },
+    body: JSON.stringify(tasks),
+  });
+  if (!response.ok) throw new Error(`Supabase upsert failed: ${response.status}`);
+  return response.json();
+}
+
 async function updateSupabaseTask(id, patch) {
   const { supabaseUrl, supabaseAnonKey, supabaseTable = "opening_tasks" } = runtimeConfig;
   const response = await fetch(`${supabaseUrl}/rest/v1/${supabaseTable}?id=eq.${encodeURIComponent(id)}`, {
@@ -234,20 +256,25 @@ async function updateSupabaseTask(id, patch) {
 
 const taskStore = {
   async load() {
-    if (runtimeConfig.dataMode === "supabase" && runtimeConfig.supabaseUrl && runtimeConfig.supabaseAnonKey) {
+    if (isSupabaseMode()) {
       state.sourceLabel = "Supabase 云端表";
+      state.lastSyncedAt = new Date().toISOString();
       return fetchSupabaseTasks();
     }
     state.sourceLabel = "本地浏览器存储";
+    state.lastSyncedAt = JSON.parse(localStorage.getItem(LOCAL_META_KEY) || "{}").lastSyncAt || "";
     return getLocalTasks();
   },
   async save(task) {
     const normalized = normalizeTask(task, state.tasks.length + 1);
-    if (runtimeConfig.dataMode === "supabase" && runtimeConfig.supabaseUrl && runtimeConfig.supabaseAnonKey) {
-      return normalizeTask(await createSupabaseTask(normalized), state.tasks.length + 1);
+    if (isSupabaseMode()) {
+      const saved = normalizeTask(await createSupabaseTask(normalized), state.tasks.length + 1);
+      state.lastSyncedAt = new Date().toISOString();
+      return saved;
     }
     const next = [...state.tasks, normalized];
     setLocalTasks(next);
+    state.lastSyncedAt = JSON.parse(localStorage.getItem(LOCAL_META_KEY) || "{}").lastSyncAt || "";
     return normalized;
   },
   async update(id, patch) {
@@ -261,21 +288,26 @@ const taskStore = {
       },
       index
     );
-    if (runtimeConfig.dataMode === "supabase" && runtimeConfig.supabaseUrl && runtimeConfig.supabaseAnonKey) {
-      return normalizeTask(await updateSupabaseTask(id, merged), index);
+    if (isSupabaseMode()) {
+      const updated = normalizeTask(await updateSupabaseTask(id, merged), index);
+      state.lastSyncedAt = new Date().toISOString();
+      return updated;
     }
     const next = [...state.tasks];
     next[index] = merged;
     setLocalTasks(next);
+    state.lastSyncedAt = JSON.parse(localStorage.getItem(LOCAL_META_KEY) || "{}").lastSyncAt || "";
     return merged;
   },
   async seedCloud() {
-    if (!(runtimeConfig.dataMode === "supabase" && runtimeConfig.supabaseUrl && runtimeConfig.supabaseAnonKey)) {
+    if (!isSupabaseMode()) {
       return;
     }
-    for (const [index, task] of seedPayload.tasks.entries()) {
-      await createSupabaseTask(normalizeTask({ ...task, manual_status: task.status_hint }, index));
-    }
+    const tasks = seedPayload.tasks.map((task, index) =>
+      normalizeTask({ ...task, manual_status: task.status_hint }, index)
+    );
+    await upsertSupabaseTasks(tasks);
+    state.lastSyncedAt = new Date().toISOString();
   },
 };
 
@@ -346,13 +378,14 @@ function renderHero() {
 
 function renderSourceStatus() {
   els.sourceBadge.textContent = state.sourceMode === "supabase" ? "团队共享模式" : "本地演示模式";
-  const meta = JSON.parse(localStorage.getItem(LOCAL_META_KEY) || "{}");
-  const lastSyncAt = state.sourceMode === "supabase" ? new Date().toLocaleString("zh-CN") : meta.lastSyncAt;
-  els.lastSyncText.textContent = `${state.sourceLabel || "未连接"} ｜ 最后同步 ${lastSyncAt || "首次载入"}`;
+  const lastSyncAt = state.lastSyncedAt ? new Date(state.lastSyncedAt).toLocaleString("zh-CN") : "首次载入";
+  els.lastSyncText.textContent = `${state.sourceLabel || "未连接"} ｜ 最后同步 ${lastSyncAt}`;
   if (state.sourceMode === "supabase") {
     els.seedCloudButton.removeAttribute("hidden");
+    els.syncCloudButton.removeAttribute("hidden");
   } else {
     els.seedCloudButton.setAttribute("hidden", "hidden");
+    els.syncCloudButton.setAttribute("hidden", "hidden");
   }
 }
 
@@ -652,6 +685,12 @@ async function init() {
   rerender();
 }
 
+async function syncFromCloud() {
+  if (!isSupabaseMode()) return;
+  state.tasks = await taskStore.load();
+  rerender();
+}
+
 function scheduleMidnightRefresh() {
   const now = new Date();
   const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
@@ -661,6 +700,16 @@ function scheduleMidnightRefresh() {
     rerender();
     scheduleMidnightRefresh();
   }, delay);
+}
+
+function startAutoSync() {
+  if (!isSupabaseMode()) return;
+  window.setInterval(() => {
+    syncFromCloud().catch((error) => console.error("Auto sync failed", error));
+  }, runtimeConfig.supabaseAutoSyncMs || 30000);
+  window.addEventListener("focus", () => {
+    syncFromCloud().catch((error) => console.error("Focus sync failed", error));
+  });
 }
 
 function bindEvents() {
@@ -700,8 +749,19 @@ function bindEvents() {
       els.seedCloudButton.disabled = false;
     }
   });
+  els.syncCloudButton.addEventListener("click", async () => {
+    els.syncCloudButton.disabled = true;
+    try {
+      await syncFromCloud();
+    } catch (error) {
+      alert(`同步失败：${error.message}`);
+    } finally {
+      els.syncCloudButton.disabled = false;
+    }
+  });
 }
 
 bindEvents();
 init();
 scheduleMidnightRefresh();
+startAutoSync();

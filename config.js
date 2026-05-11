@@ -3,4 +3,5 @@ window.DEJI_CONFIG = {
   supabaseUrl: "",
   supabaseAnonKey: "",
   supabaseTable: "opening_tasks",
+  supabaseAutoSyncMs: 30000,
 };

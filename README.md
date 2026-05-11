@@ -10,6 +10,7 @@
 - 新增任务
 - 编辑任务
 - 手动维护任务状态
+- 云端自动同步
 - 支持两种数据模式
   - `local`: 本地浏览器存储，适合演示和单人整理
   - `supabase`: 云端共享表，适合团队共同维护
@@ -50,6 +51,7 @@ python3 /Users/wuzhiyang/Desktop/deji-opening-dashboard/scripts/build_data.py
 6. `main` 分支更新后会自动发布
 
 发布后，团队通过 GitHub Pages 域名访问；任务新增和编辑写入 Supabase。
+默认会每 30 秒自动同步一次，回到页面焦点时也会自动拉最新数据，也可以点击“立即同步”。
 
 ## 注意
 

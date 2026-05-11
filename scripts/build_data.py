@@ -34,6 +34,27 @@ PHASES = [
     (date(2026, 6, 18), date(2026, 6, 18), "正式开业"),
 ]
 
+DEPARTMENT_ALIASES = {
+    "运营": "运营部",
+    "营运": "运营部",
+    "运营部": "运营部",
+    "采购": "采购部",
+    "采购部": "采购部",
+    "训练": "训练部",
+    "训练部": "训练部",
+    "厨政": "厨政部",
+    "厨政部": "厨政部",
+    "市场": "市场部",
+    "市场部": "市场部",
+    "研发": "研发部",
+    "研发部": "研发部",
+    "HR": "人资部",
+    "人资": "人资部",
+    "人资部": "人资部",
+    "食安": "食安部",
+    "食安部": "食安部",
+}
+
 
 MANUAL_DATE_LABELS = {
     "管理组伙伴6大管理系统集训": "待确认（建议补充到 5/12-5/18）",
@@ -103,6 +124,14 @@ def normalize_row(row: list[str]) -> dict[str, str]:
         "notes": mapped[6],
         "reviewer": mapped[7],
     }
+
+
+def normalize_department(value: str) -> str:
+    raw = (value or "").strip()
+    if not raw:
+        return ""
+    primary = re.split(r"[\/、,，\s]+", raw)[0]
+    return DEPARTMENT_ALIASES.get(primary, raw)
 
 
 def parse_dates(raw_date: str, title: str) -> tuple[str | None, str | None, str, str, bool]:
@@ -203,7 +232,7 @@ def build_tasks() -> list[Task]:
             row_number=row_number,
             title=normalized["title"],
             description=normalized["description"],
-            department=normalized["department"],
+            department=normalize_department(normalized["department"]),
             owner=normalized["owner"],
             collaborators=normalized["collaborators"],
             notes=normalized["notes"],

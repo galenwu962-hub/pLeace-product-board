@@ -1,9 +1,9 @@
 {
   "projectName": "南京德基新店开业总控驾驶舱",
   "sourceName": "南京德基开业倒计时总控表.csv",
-  "today": "2026-05-10",
+  "today": "2026-05-11",
   "openingDay": "2026-06-18",
-  "countdownDays": 39,
+  "countdownDays": 38,
   "projectSpanDays": 42,
   "kpis": {
     "taskCount": 41,
@@ -14,18 +14,15 @@
     "highRiskCount": 14
   },
   "departmentCounts": {
-    "HR": 2,
-    "训练": 6,
-    "研发": 1,
-    "研发/训练": 1,
-    "厨政": 6,
-    "运营": 8,
-    "营运": 1,
-    "市场": 3,
+    "人资部": 2,
+    "训练部": 6,
+    "研发部": 3,
+    "厨政部": 6,
+    "运营部": 9,
+    "市场部": 3,
     "工程": 3,
-    "采购": 7,
-    "食安": 2,
-    "研发/厨政": 1
+    "采购部": 7,
+    "食安部": 2
   },
   "phaseCounts": {
     "团队与训练": 10,
@@ -211,7 +208,7 @@
       "row_number": 3,
       "title": "新店人员评估",
       "description": "完成新店所有伙伴的能力评估",
-      "department": "HR",
+      "department": "人资部",
       "owner": "王婷婷",
       "collaborators": "运营、厨政、训练",
       "notes": "",
@@ -225,14 +222,14 @@
       "phase": "团队与训练",
       "status_hint": "已逾期",
       "risk_level": "高",
-      "days_to_deadline": -2
+      "days_to_deadline": -3
     },
     {
       "id": "task-4-新店全体人员动员大会",
       "row_number": 4,
       "title": "新店全体人员动员大会",
       "description": "第一次伙伴大会，沟通薪酬政策等相关事宜，鼓舞伙伴士气",
-      "department": "HR",
+      "department": "人资部",
       "owner": "王婷婷",
       "collaborators": "运营、厨政",
       "notes": "",
@@ -246,14 +243,14 @@
       "phase": "团队与训练",
       "status_hint": "临近开始",
       "risk_level": "高",
-      "days_to_deadline": 2
+      "days_to_deadline": 1
     },
     {
       "id": "task-5-管理组伙伴6大管理系统集训",
       "row_number": 5,
       "title": "管理组伙伴6大管理系统集训",
       "description": "针对管理组伙伴培训门店管理系统",
-      "department": "训练",
+      "department": "训练部",
       "owner": "肖世欣",
       "collaborators": "运营、厨政",
       "notes": "",
@@ -274,7 +271,7 @@
       "row_number": 6,
       "title": "研发准备第一批培训原物料",
       "description": "研发准备好第一批培训物料",
-      "department": "研发",
+      "department": "研发部",
       "owner": "李涌吉",
       "collaborators": "厨政",
       "notes": "",
@@ -288,14 +285,14 @@
       "phase": "团队与训练",
       "status_hint": "临近开始",
       "risk_level": "高",
-      "days_to_deadline": 2
+      "days_to_deadline": 1
     },
     {
       "id": "task-7-产品及服务培训-训练员及以上人员",
       "row_number": 7,
       "title": "产品及服务培训\n训练员及以上人员",
       "description": "研发培训厨师团队所有菜品（附培训计划）",
-      "department": "研发/训练",
+      "department": "研发部",
       "owner": "李涌吉/郑志龙/\n王建雄/肖世欣",
       "collaborators": "厨政/运营",
       "notes": "",
@@ -309,14 +306,14 @@
       "phase": "团队与训练",
       "status_hint": "临近开始",
       "risk_level": "高",
-      "days_to_deadline": 5
+      "days_to_deadline": 4
     },
     {
       "id": "task-8-全流程第一次演练",
       "row_number": 8,
       "title": "全流程第一次演练",
       "description": "前厅、后厨、水吧全流程演练，生成调整方案",
-      "department": "训练",
+      "department": "训练部",
       "owner": "肖世欣",
       "collaborators": "厨政、研发、运营",
       "notes": "",
@@ -330,14 +327,14 @@
       "phase": "团队与训练",
       "status_hint": "未开始",
       "risk_level": "中",
-      "days_to_deadline": 9
+      "days_to_deadline": 8
     },
     {
       "id": "task-9-全流程复盘-店长和总厨",
       "row_number": 9,
       "title": "全流程复盘 店长和总厨",
       "description": "针对菜品及服务的流程进行复盘",
-      "department": "训练",
+      "department": "训练部",
       "owner": "肖世欣",
       "collaborators": "运营、厨政",
       "notes": "",
@@ -351,14 +348,14 @@
       "phase": "团队与训练",
       "status_hint": "未开始",
       "risk_level": "中",
-      "days_to_deadline": 10
+      "days_to_deadline": 9
     },
     {
       "id": "task-10-产品伙伴级培训-服务伙伴培训",
       "row_number": 10,
       "title": "产品伙伴级培训\n服务伙伴培训",
       "description": "依据新店培训计划完成相应培训和鉴定",
-      "department": "厨政",
+      "department": "厨政部",
       "owner": "杨丽娜/余荣武",
       "collaborators": "厨政",
       "notes": "",
@@ -372,14 +369,14 @@
       "phase": "团队与训练",
       "status_hint": "未开始",
       "risk_level": "中",
-      "days_to_deadline": 13
+      "days_to_deadline": 12
     },
     {
       "id": "task-11-前厅-后厨-水吧全流程第二次演练-第二次调整方案",
       "row_number": 11,
       "title": "前厅、后厨、水吧全流程第二次演练 第二次调整方案",
       "description": "全流程由新店伙伴上岗实操，服务、水吧、后厨",
-      "department": "运营",
+      "department": "运营部",
       "owner": "杨丽娜/余荣武",
       "collaborators": "运营、厨政",
       "notes": "",
@@ -393,14 +390,14 @@
       "phase": "团队与训练",
       "status_hint": "未开始",
       "risk_level": "中",
-      "days_to_deadline": 16
+      "days_to_deadline": 15
     },
     {
       "id": "task-12-确定住宿方案-签订合同",
       "row_number": 12,
       "title": "确定住宿方案、签订合同",
       "description": "财务配合完成宿舍费用的申请及合同的签订",
-      "department": "营运",
+      "department": "运营部",
       "owner": "店长/王婷",
       "collaborators": "财务/HR",
       "notes": "",
@@ -414,14 +411,14 @@
       "phase": "团队与训练",
       "status_hint": "未开始",
       "risk_level": "低",
-      "days_to_deadline": 16
+      "days_to_deadline": 15
     },
     {
       "id": "task-13-管理组伙伴管理系统鉴定-相关运营管理关键流程考核",
       "row_number": 13,
       "title": "管理组伙伴管理系统鉴定\n相关运营管理关键流程考核",
       "description": "管理组伙伴门店管理系统考试",
-      "department": "训练",
+      "department": "训练部",
       "owner": "肖世欣",
       "collaborators": "运营、厨政",
       "notes": "",
@@ -435,14 +432,14 @@
       "phase": "团队与训练",
       "status_hint": "未开始",
       "risk_level": "低",
-      "days_to_deadline": 18
+      "days_to_deadline": 17
     },
     {
       "id": "task-14-新店营销方案通过总经办的确认",
       "row_number": 14,
       "title": "新店营销方案通过总经办的确认",
       "description": "新店营销活动方案确定",
-      "department": "市场",
+      "department": "市场部",
       "owner": "林艾亭",
       "collaborators": "总办",
       "notes": "",
@@ -456,14 +453,14 @@
       "phase": "迁店与基础交付",
       "status_hint": "未开始",
       "risk_level": "低",
-      "days_to_deadline": 22
+      "days_to_deadline": 21
     },
     {
       "id": "task-15-管理组伙伴启程前往南京入住",
       "row_number": 15,
       "title": "管理组伙伴启程前往南京入住",
       "description": "店长带领管理组前往南京，做住宿的准备工作，买床，宿舍配套设施，按照宿舍标准",
-      "department": "运营",
+      "department": "运营部",
       "owner": "店长",
       "collaborators": "HR/训练",
       "notes": "",
@@ -477,14 +474,14 @@
       "phase": "迁店与基础交付",
       "status_hint": "未开始",
       "risk_level": "低",
-      "days_to_deadline": 22
+      "days_to_deadline": 21
     },
     {
       "id": "task-16-所有伙伴出发入住南京",
       "row_number": 16,
       "title": "所有伙伴出发入住南京",
       "description": "伙伴出发入住，全员办理健康证\n人资：协助购买团体出行机票/高铁票",
-      "department": "运营",
+      "department": "运营部",
       "owner": "店长",
       "collaborators": "HR/训练",
       "notes": "",
@@ -498,7 +495,7 @@
       "phase": "迁店与基础交付",
       "status_hint": "未开始",
       "risk_level": "低",
-      "days_to_deadline": 25
+      "days_to_deadline": 24
     },
     {
       "id": "task-17-交付仓库-30-35平方",
@@ -519,14 +516,14 @@
       "phase": "迁店与基础交付",
       "status_hint": "未开始",
       "risk_level": "中",
-      "days_to_deadline": 26
+      "days_to_deadline": 25
     },
     {
       "id": "task-18-清洁工具-办公用品等到货备用",
       "row_number": 18,
       "title": "清洁工具、办公用品等到货备用",
       "description": "配合商场物业及门店清洁工作",
-      "department": "采购",
+      "department": "采购部",
       "owner": "张蓓",
       "collaborators": "营运",
       "notes": "",
@@ -540,14 +537,14 @@
       "phase": "迁店与基础交付",
       "status_hint": "未开始",
       "risk_level": "中",
-      "days_to_deadline": 26
+      "days_to_deadline": 25
     },
     {
       "id": "task-19-定制包材及前厅客用物料数量清点",
       "row_number": 19,
       "title": "定制包材及前厅客用物料数量清点",
       "description": "定制包材及前厅客用物料数量质量验收",
-      "department": "采购",
+      "department": "采购部",
       "owner": "张蓓",
       "collaborators": "营运",
       "notes": "",
@@ -561,14 +558,14 @@
       "phase": "迁店与基础交付",
       "status_hint": "未开始",
       "risk_level": "中",
-      "days_to_deadline": 26
+      "days_to_deadline": 25
     },
     {
       "id": "task-20-首批常温干货与调料订货及备货到仓",
       "row_number": 20,
       "title": "首批常温干货与调料订货及备货到仓",
       "description": "跟进到仓数量",
-      "department": "采购",
+      "department": "采购部",
       "owner": "张蓓",
       "collaborators": "营运",
       "notes": "",
@@ -582,14 +579,14 @@
       "phase": "迁店与基础交付",
       "status_hint": "未开始",
       "risk_level": "中",
-      "days_to_deadline": 26
+      "days_to_deadline": 25
     },
     {
       "id": "task-21-电子设备安装",
       "row_number": 21,
       "title": "电子设备安装",
       "description": "根据好天财电子产品数量与安装点位",
-      "department": "训练",
+      "department": "训练部",
       "owner": "肖世欣",
       "collaborators": "工程",
       "notes": "",
@@ -603,14 +600,14 @@
       "phase": "迁店与基础交付",
       "status_hint": "未开始",
       "risk_level": "中",
-      "days_to_deadline": 27
+      "days_to_deadline": 26
     },
     {
       "id": "task-22-产品发仓库",
       "row_number": 22,
       "title": "产品发仓库",
       "description": "工器具、食材、物料发货",
-      "department": "采购",
+      "department": "采购部",
       "owner": "徐志芸",
       "collaborators": "厨政",
       "notes": "",
@@ -624,7 +621,7 @@
       "phase": "物料与系统到店",
       "status_hint": "未开始",
       "risk_level": "中",
-      "days_to_deadline": 29
+      "days_to_deadline": 28
     },
     {
       "id": "task-23-工程交场厨房-设备调试确保正常",
@@ -645,14 +642,14 @@
       "phase": "物料与系统到店",
       "status_hint": "未开始",
       "risk_level": "低",
-      "days_to_deadline": 31
+      "days_to_deadline": 30
     },
     {
       "id": "task-24-食品经营许可证证照办理",
       "row_number": 24,
       "title": "食品经营许可证证照办理",
       "description": "保证办理进度",
-      "department": "食安",
+      "department": "食安部",
       "owner": "张异香",
       "collaborators": "工程",
       "notes": "",
@@ -687,14 +684,14 @@
       "phase": "物料与系统到店",
       "status_hint": "未开始",
       "risk_level": "中",
-      "days_to_deadline": 32
+      "days_to_deadline": 31
     },
     {
       "id": "task-26-所有厨杂餐具等物料跟进到店",
       "row_number": 26,
       "title": "所有厨杂餐具等物料跟进到店",
       "description": "进货核对，查遗补漏",
-      "department": "采购",
+      "department": "采购部",
       "owner": "张蓓",
       "collaborators": "厨政",
       "notes": "",
@@ -708,14 +705,14 @@
       "phase": "物料与系统到店",
       "status_hint": "未开始",
       "risk_level": "低",
-      "days_to_deadline": 32
+      "days_to_deadline": 31
     },
     {
       "id": "task-27-相关定制物料完成设计-订货-并运输到店-所有物料及包装到货",
       "row_number": 27,
       "title": "相关定制物料完成设计、订货、并运输到店/所有物料及包装到货",
       "description": "定制物料及包材等到货核对（店长）",
-      "department": "厨政",
+      "department": "厨政部",
       "owner": "余荣武",
       "collaborators": "训练",
       "notes": "",
@@ -736,7 +733,7 @@
       "row_number": 28,
       "title": "工器具定位、工程遗留问题整改",
       "description": "工器具定位，同时制定工程遗留问题整改",
-      "department": "厨政",
+      "department": "厨政部",
       "owner": "余荣武",
       "collaborators": "工程",
       "notes": "",
@@ -757,7 +754,7 @@
       "row_number": 29,
       "title": "天财商龙系统订货及价格方案录入",
       "description": "录入系统后OA通知门店订货启动",
-      "department": "采购",
+      "department": "采购部",
       "owner": "徐志芸",
       "collaborators": "厨政",
       "notes": "",
@@ -771,14 +768,14 @@
       "phase": "物料与系统到店",
       "status_hint": "未开始",
       "risk_level": "中",
-      "days_to_deadline": 33
+      "days_to_deadline": 32
     },
     {
       "id": "task-30-冻品物料到货",
       "row_number": 30,
       "title": "冻品物料到货",
       "description": "进货核对",
-      "department": "厨政",
+      "department": "厨政部",
       "owner": "余荣武",
       "collaborators": "采购",
       "notes": "",
@@ -792,14 +789,14 @@
       "phase": "物料与系统到店",
       "status_hint": "未开始",
       "risk_level": "低",
-      "days_to_deadline": 33
+      "days_to_deadline": 32
     },
     {
       "id": "task-31-工程前厅交场-门店做细部清洁",
       "row_number": 31,
       "title": "工程前厅交场  门店做细部清洁",
       "description": "制定细部清洁计划",
-      "department": "运营",
+      "department": "运营部",
       "owner": "店长",
       "collaborators": "运营、厨政",
       "notes": "",
@@ -813,14 +810,14 @@
       "phase": "物料与系统到店",
       "status_hint": "未开始",
       "risk_level": "中",
-      "days_to_deadline": 33
+      "days_to_deadline": 32
     },
     {
       "id": "task-32-生鲜到货-食材备货",
       "row_number": 32,
       "title": "生鲜到货、食材备货",
       "description": "进货核对 食材备料计划",
-      "department": "厨政",
+      "department": "厨政部",
       "owner": "余荣武",
       "collaborators": "采购",
       "notes": "",
@@ -834,14 +831,14 @@
       "phase": "联调与开业冲刺",
       "status_hint": "未开始",
       "risk_level": "低",
-      "days_to_deadline": 34
+      "days_to_deadline": 33
     },
     {
       "id": "task-33-食材备货",
       "row_number": 33,
       "title": "食材备货",
       "description": "进货核对 食材备料计划",
-      "department": "厨政",
+      "department": "厨政部",
       "owner": "余荣武",
       "collaborators": "采购",
       "notes": "",
@@ -855,14 +852,14 @@
       "phase": "联调与开业冲刺",
       "status_hint": "未开始",
       "risk_level": "低",
-      "days_to_deadline": 36
+      "days_to_deadline": 35
     },
     {
       "id": "task-34-IT设备测试确认-天财系统门店设置",
       "row_number": 34,
       "title": "IT设备测试确认/天财系统门店设置",
       "description": "确定IT正常运作",
-      "department": "训练",
+      "department": "训练部",
       "owner": "肖世欣",
       "collaborators": "工程",
       "notes": "",
@@ -876,14 +873,14 @@
       "phase": "联调与开业冲刺",
       "status_hint": "未开始",
       "risk_level": "低",
-      "days_to_deadline": 35
+      "days_to_deadline": 34
     },
     {
       "id": "task-35-伙伴工衣到货",
       "row_number": 35,
       "title": "伙伴工衣到货",
       "description": "工衣到货分配，沟通着装要求",
-      "department": "采购",
+      "department": "采购部",
       "owner": "徐志芸",
       "collaborators": "训练",
       "notes": "",
@@ -904,7 +901,7 @@
       "row_number": 36,
       "title": "门店推广物料、装饰等陈列完成",
       "description": "物料到店核对陈列摆放校准",
-      "department": "市场",
+      "department": "市场部",
       "owner": "林艾亭",
       "collaborators": "运营",
       "notes": "",
@@ -925,7 +922,7 @@
       "row_number": 37,
       "title": "营销活动讲解会议及活动测试",
       "description": "市场对全门店伙伴进行营销活动讲解会议及现场活动全流程测试：产品&活动键位/人员动线安排/活动物料定点",
-      "department": "市场",
+      "department": "市场部",
       "owner": "林艾亭",
       "collaborators": "",
       "notes": "",
@@ -946,7 +943,7 @@
       "row_number": 38,
       "title": "排队压力测试",
       "description": "模拟排队演练，所有超级迎宾需要参加并通过演练熟悉各种突发事件的应对话术",
-      "department": "运营",
+      "department": "运营部",
       "owner": "",
       "collaborators": "",
       "notes": "",
@@ -967,7 +964,7 @@
       "row_number": 39,
       "title": "食品经营许可证证照办理",
       "description": "保证办理进度",
-      "department": "食安",
+      "department": "食安部",
       "owner": "张异香",
       "collaborators": "工程",
       "notes": "",
@@ -988,7 +985,7 @@
       "row_number": 40,
       "title": "热厨、水吧能出餐",
       "description": "热厨、水吧产品完全制作一轮保证出餐流程顺畅",
-      "department": "研发/厨政",
+      "department": "研发部",
       "owner": "李涌吉 郑志龙",
       "collaborators": "厨政",
       "notes": "",
@@ -1009,7 +1006,7 @@
       "row_number": 41,
       "title": "门店全流程的测试",
       "description": "内部测试+全员训练",
-      "department": "运营",
+      "department": "运营部",
       "owner": "店长",
       "collaborators": "All",
       "notes": "",
@@ -1023,14 +1020,14 @@
       "phase": "联调与开业冲刺",
       "status_hint": "未开始",
       "risk_level": "中",
-      "days_to_deadline": 37
+      "days_to_deadline": 36
     },
     {
       "id": "task-42-最后复盘整改",
       "row_number": 42,
       "title": "最后复盘整改",
       "description": "复盘内测问题做好充分开业准备",
-      "department": "运营",
+      "department": "运营部",
       "owner": "店长",
       "collaborators": "All",
       "notes": "",
@@ -1044,14 +1041,14 @@
       "phase": "联调与开业冲刺",
       "status_hint": "未开始",
       "risk_level": "中",
-      "days_to_deadline": 38
+      "days_to_deadline": 37
     },
     {
       "id": "task-43-门店开业",
       "row_number": 43,
       "title": "门店开业",
       "description": "正式营业",
-      "department": "运营",
+      "department": "运营部",
       "owner": "店长",
       "collaborators": "All",
       "notes": "",
@@ -1065,7 +1062,7 @@
       "phase": "正式开业",
       "status_hint": "未开始",
       "risk_level": "中",
-      "days_to_deadline": 39
+      "days_to_deadline": 38
     }
   ]
 }

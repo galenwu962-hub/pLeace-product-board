@@ -3,6 +3,27 @@ const runtimeConfig = window.DEJI_CONFIG || { dataMode: "local" };
 
 const LOCAL_TASKS_KEY = "deji-opening-shared-tasks-v2";
 const LOCAL_META_KEY = "deji-opening-shared-meta-v2";
+const DEPARTMENT_OPTIONS = ["运营部", "采购部", "训练部", "厨政部", "市场部", "研发部", "人资部", "食安部"];
+const DEPARTMENT_ALIASES = {
+  "运营": "运营部",
+  "营运": "运营部",
+  "运营部": "运营部",
+  "采购": "采购部",
+  "采购部": "采购部",
+  "训练": "训练部",
+  "训练部": "训练部",
+  "厨政": "厨政部",
+  "厨政部": "厨政部",
+  "市场": "市场部",
+  "市场部": "市场部",
+  "研发": "研发部",
+  "研发部": "研发部",
+  "HR": "人资部",
+  "人资": "人资部",
+  "人资部": "人资部",
+  "食安": "食安部",
+  "食安部": "食安部",
+};
 const FORM_FIELDS = [
   "title",
   "description",
@@ -60,6 +81,7 @@ const els = {
   modalCancelButton: document.getElementById("modalCancelButton"),
   taskForm: document.getElementById("taskForm"),
   saveTaskButton: document.getElementById("saveTaskButton"),
+  deleteTaskButton: document.getElementById("deleteTaskButton"),
 };
 
 function toIsoDate(input) {
@@ -69,6 +91,13 @@ function toIsoDate(input) {
 
 function isSupabaseMode() {
   return Boolean(runtimeConfig.dataMode === "supabase" && runtimeConfig.supabaseUrl && runtimeConfig.supabaseAnonKey);
+}
+
+function normalizeDepartment(value) {
+  const raw = (value || "").trim();
+  if (!raw) return "";
+  const primary = raw.split(/[\/、,，\s]+/).find(Boolean) || raw;
+  return DEPARTMENT_ALIASES[primary] || raw;
 }
 
 function slug(text) {
@@ -138,6 +167,7 @@ function normalizeTask(task, index) {
   const normalized = { ...task };
   normalized.id = task.id || `task-${Date.now()}-${index}-${slug(task.title)}`;
   normalized.row_number = task.row_number || index + 1;
+  normalized.department = normalizeDepartment(task.department);
   normalized.start_date = toIsoDate(task.start_date);
   normalized.end_date = toIsoDate(task.end_date);
   normalized.has_confirmed_date = Boolean(normalized.start_date || normalized.end_date);
@@ -254,6 +284,18 @@ async function updateSupabaseTask(id, patch) {
   return rows[0];
 }
 
+async function deleteSupabaseTask(id) {
+  const { supabaseUrl, supabaseAnonKey, supabaseTable = "opening_tasks" } = runtimeConfig;
+  const response = await fetch(`${supabaseUrl}/rest/v1/${supabaseTable}?id=eq.${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: {
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${supabaseAnonKey}`,
+    },
+  });
+  if (!response.ok) throw new Error(`Supabase delete failed: ${response.status}`);
+}
+
 const taskStore = {
   async load() {
     if (isSupabaseMode()) {
@@ -308,6 +350,16 @@ const taskStore = {
     );
     await upsertSupabaseTasks(tasks);
     state.lastSyncedAt = new Date().toISOString();
+  },
+  async delete(id) {
+    if (isSupabaseMode()) {
+      await deleteSupabaseTask(id);
+      state.lastSyncedAt = new Date().toISOString();
+      return;
+    }
+    const next = state.tasks.filter((task) => task.id !== id);
+    setLocalTasks(next);
+    state.lastSyncedAt = JSON.parse(localStorage.getItem(LOCAL_META_KEY) || "{}").lastSyncAt || "";
   },
 };
 
@@ -486,7 +538,8 @@ function buildTag(label, className) {
 }
 
 function renderFilterOptions() {
-  const departments = [...new Set(state.tasks.map((task) => task.department).filter(Boolean))].sort();
+  const presentDepartments = new Set(state.tasks.map((task) => task.department).filter(Boolean));
+  const departments = DEPARTMENT_OPTIONS.filter((department) => presentDepartments.has(department));
   const phases = [...new Set(state.tasks.map((task) => task.phase).filter(Boolean))].sort();
   els.departmentFilter.innerHTML =
     '<option value="">全部部门</option>' + departments.map((value) => `<option value="${value}">${value}</option>`).join("");
@@ -549,6 +602,7 @@ function renderTasks() {
                   .join("")}
               </select>
               <button class="ghost-button" data-edit-task="${task.id}" type="button">编辑</button>
+              <button class="ghost-button danger-button" data-delete-task="${task.id}" type="button">删除</button>
             </div>
           </div>
           <p class="task-meta">${task.description || "暂无任务说明"}</p>
@@ -581,6 +635,20 @@ function renderTasks() {
 
   els.taskBoard.querySelectorAll("[data-edit-task]").forEach((button) => {
     button.addEventListener("click", () => openTaskModal(button.dataset.editTask));
+  });
+
+  els.taskBoard.querySelectorAll("[data-delete-task]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const task = state.tasks.find((item) => item.id === button.dataset.deleteTask);
+      if (!task || !window.confirm(`确认删除任务「${task.title}」吗？`)) return;
+      try {
+        await taskStore.delete(task.id);
+        state.tasks = state.tasks.filter((item) => item.id !== task.id);
+        rerender();
+      } catch (error) {
+        alert(`删除失败：${error.message}`);
+      }
+    });
   });
 }
 
@@ -622,6 +690,7 @@ function openTaskModal(taskId = null) {
     const input = els.taskForm.elements.namedItem(field);
     if (input) input.value = task?.[field] || "";
   });
+  els.deleteTaskButton.hidden = !taskId;
   els.modal.showModal();
 }
 
@@ -634,6 +703,7 @@ function closeTaskModal() {
 function collectFormData() {
   const formData = new FormData(els.taskForm);
   const payload = Object.fromEntries(formData.entries());
+  payload.department = normalizeDepartment(payload.department);
   payload.start_date = toIsoDate(payload.start_date);
   payload.end_date = toIsoDate(payload.end_date);
   payload.phase = payload.phase || inferPhase(payload.end_date);
@@ -737,6 +807,22 @@ function bindEvents() {
   els.modalCloseButton.addEventListener("click", closeTaskModal);
   els.modalCancelButton.addEventListener("click", closeTaskModal);
   els.taskForm.addEventListener("submit", handleTaskSubmit);
+  els.deleteTaskButton.addEventListener("click", async () => {
+    if (!state.editorTaskId) return;
+    const task = state.tasks.find((item) => item.id === state.editorTaskId);
+    if (!task || !window.confirm(`确认删除任务「${task.title}」吗？`)) return;
+    els.deleteTaskButton.disabled = true;
+    try {
+      await taskStore.delete(task.id);
+      state.tasks = state.tasks.filter((item) => item.id !== task.id);
+      closeTaskModal();
+      rerender();
+    } catch (error) {
+      alert(`删除失败：${error.message}`);
+    } finally {
+      els.deleteTaskButton.disabled = false;
+    }
+  });
   els.seedCloudButton.addEventListener("click", async () => {
     els.seedCloudButton.disabled = true;
     try {

@@ -122,7 +122,19 @@
         </div>
         <div class="form-grid">
           <label><span>任务名称</span><input name="title" required /></label>
-          <label><span>主责部门</span><input name="department" /></label>
+          <label><span>主责部门</span>
+            <select name="department">
+              <option value="">请选择部门</option>
+              <option value="运营部">运营部</option>
+              <option value="采购部">采购部</option>
+              <option value="训练部">训练部</option>
+              <option value="厨政部">厨政部</option>
+              <option value="市场部">市场部</option>
+              <option value="研发部">研发部</option>
+              <option value="人资部">人资部</option>
+              <option value="食安部">食安部</option>
+            </select>
+          </label>
           <label><span>主要负责人</span><input name="owner" /></label>
           <label><span>协同部门和人员</span><input name="collaborators" /></label>
           <label><span>审核人</span><input name="reviewer" /></label>
@@ -151,6 +163,7 @@
           <label class="full"><span>备注</span><textarea name="notes" rows="3"></textarea></label>
         </div>
         <div class="modal-actions">
+          <button id="deleteTaskButton" class="ghost-button danger-button" type="button" hidden>删除任务</button>
           <button id="modalCancelButton" class="ghost-button" type="button">取消</button>
           <button id="saveTaskButton" class="action-button" type="submit">保存任务</button>
         </div>

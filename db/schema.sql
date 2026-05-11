@@ -43,3 +43,9 @@ for update
 to anon
 using (true)
 with check (true);
+
+create policy "public delete opening tasks"
+on public.opening_tasks
+for delete
+to anon
+using (true);

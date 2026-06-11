@@ -6,7 +6,7 @@ const departments = [
 
 const runtimeConfig = window.DEJI_CONFIG || {};
 const sharedStateRowId = "product-change-dashboard-state-v1";
-const sharedDataRevision = "2026-06-hot-actual-v2";
+const sharedDataRevision = "2026-06-hot-drink-actual-v3";
 
 const defaultProductChanges = [
   {
@@ -50,24 +50,24 @@ const defaultProductChanges = [
     followUp: true,
   },
   {
-    id: "drink-launch-1",
+    id: "drink-launch-20260630-jasmine-mango-kombucha",
     department: "drink",
     type: "launch",
-    name: "青提茉莉冷萃",
-    time: "2026-06-04 09:30",
-    reviewer: "品牌部 / 食安部",
-    opinion: "原则通过。杯贴与过敏原提示需在上线前完成复核。",
+    name: "茉莉青芒康普茶/配餐神器",
+    time: "2026-06-30",
+    reviewer: "",
+    opinion: "",
     followUp: true,
   },
   {
-    id: "drink-retire-1",
+    id: "drink-optimize-20260630-mung-bean-sparkling-water",
     department: "drink",
-    type: "retire",
-    name: "焦糖燕麦拿铁",
-    time: "2026-06-06 21:00",
-    reviewer: "运营部",
-    opinion: "同意下架。保留配方档案，后续节令菜单可复用燕麦基底。",
-    followUp: false,
+    type: "optimize",
+    name: "绿豆汽泡水/配餐神器",
+    time: "2026-06-30",
+    reviewer: "",
+    opinion: "",
+    followUp: true,
   },
   {
     id: "bake-launch-1",
@@ -134,7 +134,7 @@ let productChanges = defaultProductChanges.map((item) => ({ ...item }));
 let reviewDepartments = defaultReviewDepartments.map((item) => ({ ...item }));
 let storageMode = "local";
 const reviewStorageKey = "product-change-dashboard-review-opinions-v1";
-const productStorageKey = "product-change-dashboard-product-changes-v2";
+const productStorageKey = "product-change-dashboard-product-changes-v3";
 
 const typeText = {
   launch: "上架",
@@ -464,10 +464,11 @@ async function loadSharedState() {
     const rows = await response.json();
     const state = rows[0]?.description ? JSON.parse(rows[0].description) : null;
     const requiresDataMigration = Boolean(state && state.dataRevision !== sharedDataRevision);
+    const actualDepartments = new Set(["hot", "drink"]);
     const incomingProducts = requiresDataMigration
       ? [
-          ...defaultProductChanges.filter((item) => item.department === "hot"),
-          ...(state.products || []).filter((item) => item.department !== "hot"),
+          ...defaultProductChanges.filter((item) => actualDepartments.has(item.department)),
+          ...(state.products || []).filter((item) => !actualDepartments.has(item.department)),
         ]
       : state?.products;
 

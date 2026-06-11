@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>产品上新与下架会审仪表盘</title>
+    <title>产品调整会审仪表盘</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -11,16 +11,20 @@
       <header class="topbar">
         <div>
           <p class="eyebrow">Product Change Review Board</p>
-          <h1>产品上新与下架会审仪表盘</h1>
+          <h1>产品调整会审仪表盘</h1>
         </div>
       </header>
 
       <section class="control-strip" aria-label="筛选控制">
-        <div class="segmented-control" id="typeFilter" role="group" aria-label="上下架筛选">
-          <button class="active" type="button" data-type="all">全部</button>
-          <button type="button" data-type="launch">上新</button>
-          <button type="button" data-type="retire">下架</button>
-        </div>
+        <label class="type-filter-control">
+          <span>事项类别</span>
+          <select id="typeFilter" aria-label="事项类别筛选">
+            <option value="all">全部事项</option>
+            <option value="launch">上架</option>
+            <option value="retire">下架</option>
+            <option value="optimize">调优</option>
+          </select>
+        </label>
         <div class="toolbar-actions">
           <div class="legend">
             <span><i class="dot hot"></i>热厨</span>
@@ -31,7 +35,7 @@
         </div>
       </section>
 
-      <section class="department-grid" id="departmentGrid" aria-label="部门上下架列表"></section>
+      <section class="department-grid" id="departmentGrid" aria-label="部门产品调整列表"></section>
 
       <section class="review-section">
         <div class="section-heading">

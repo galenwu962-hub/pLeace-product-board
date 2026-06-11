@@ -6,16 +6,47 @@ const departments = [
 
 const runtimeConfig = window.DEJI_CONFIG || {};
 const sharedStateRowId = "product-change-dashboard-state-v1";
+const sharedDataRevision = "2026-06-hot-actual-v1";
 
 const defaultProductChanges = [
   {
-    id: "hot-launch-1",
+    id: "hot-optimize-20260628-steak",
+    department: "hot",
+    type: "optimize",
+    name: "168-188 牛排",
+    time: "2026-06-28",
+    reviewer: "研发 / 市场 / 营运 / 厨政 / 采购",
+    opinion: "整点",
+    followUp: true,
+  },
+  {
+    id: "hot-launch-20260610-longgang-wanlinghui",
     department: "hot",
     type: "launch",
-    name: "黑椒牛肉粒铁板饭",
-    time: "2026-06-03 10:00",
-    reviewer: "研发部 / 运营部",
-    opinion: "同意上新。试营业首周控制每日备货，重点追踪出餐速度与毛利表现。",
+    name: "照烧鸡腿、烧汁牛腩排",
+    time: "2026-06-10",
+    reviewer: "部分门店：龙岗、万菱汇",
+    opinion: "委外物料",
+    followUp: true,
+  },
+  {
+    id: "hot-launch-20260629-shenye-ccp",
+    department: "hot",
+    type: "launch",
+    name: "照烧鸡腿、烧汁牛腩排",
+    time: "2026-06-29",
+    reviewer: "部分门店：深业、CCP",
+    opinion: "委外物料",
+    followUp: true,
+  },
+  {
+    id: "hot-launch-20260629-tomato-meat-sauce",
+    department: "hot",
+    type: "launch",
+    name: "番茄肉酱",
+    time: "2026-06-29",
+    reviewer: "单店测试",
+    opinion: "委外物料",
     followUp: true,
   },
   {
@@ -57,16 +88,6 @@ const defaultProductChanges = [
     reviewer: "财务部 / 运营部",
     opinion: "同意下架。销量低于保留线，建议释放陈列位给高转化新品。",
     followUp: false,
-  },
-  {
-    id: "hot-launch-1780301005136-k0yy73",
-    department: "hot",
-    type: "launch",
-    name: "新上新菜品",
-    time: "2026-06-01 16:03",
-    reviewer: "研发 / 市场 / 营运 / 厨政 / 采购",
-    opinion: "请填写本菜品的会审意见和执行要求。",
-    followUp: true,
   },
 ];
 
@@ -116,13 +137,15 @@ const reviewStorageKey = "product-change-dashboard-review-opinions-v1";
 const productStorageKey = "product-change-dashboard-product-changes-v1";
 
 const typeText = {
-  launch: "上新",
+  launch: "上架",
   retire: "下架",
+  optimize: "调优",
 };
 
 const typeLabel = {
   launch: "上",
   retire: "下",
+  optimize: "优",
 };
 
 const brandColors = {
@@ -133,6 +156,8 @@ const brandColors = {
   orange: "#FF8F1C",
   orangeDeep: "#D96D00",
   orangeSoft: "#FFF3E4",
+  optimize: "#5F7790",
+  optimizeSoft: "#EDF2F7",
   ink: "#14324D",
   muted: "#5F7790",
   line: "#CFE0EF",
@@ -146,6 +171,9 @@ const exportPdfButton = document.querySelector("#exportPdfButton");
 const saveState = document.querySelector("#saveState");
 
 function formatDateTime(value) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit" }).format(new Date(`${value}T00:00:00`));
+  }
   const date = new Date(value.replace(" ", "T"));
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat("zh-CN", {
@@ -159,6 +187,10 @@ function formatDateTime(value) {
 
 function toDateTimeLocalValue(value) {
   return value.replace(" ", "T");
+}
+
+function getTimeInputType(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? "date" : "datetime-local";
 }
 
 function normalizeDateTimeValue(value) {
@@ -240,6 +272,7 @@ function renderDepartmentPanels() {
       const allDepartmentItems = getCurrentProductChanges().filter((item) => item.department === department.id);
       const launchCount = allDepartmentItems.filter((item) => item.type === "launch").length;
       const retireCount = allDepartmentItems.filter((item) => item.type === "retire").length;
+      const optimizeCount = allDepartmentItems.filter((item) => item.type === "optimize").length;
 
       const itemCards = visibleItems.length
         ? visibleItems
@@ -256,18 +289,24 @@ function renderDepartmentPanels() {
                       <button class="delete-product-button" type="button" data-delete-product="${item.id}" aria-label="删除${item.name}">删除</button>
                     </div>
                     <div class="product-meta-edit">
-                      <label class="product-field">
-                        <span>${typeText[item.type]}时间</span>
-                        <input class="product-input" data-product-field="time" type="datetime-local" value="${toDateTimeLocalValue(item.time)}" aria-label="${item.name}${typeText[item.type]}时间" />
+                      <label class="product-field product-type-field">
+                        <span>事项类别</span>
+                        <select class="product-input product-type-select" data-product-field="type" aria-label="${item.name}事项类别">
+                          ${Object.entries(typeText).map(([value, label]) => `<option value="${value}" ${item.type === value ? "selected" : ""}>${label}</option>`).join("")}
+                        </select>
                       </label>
                       <label class="product-field">
-                        <span>会审部门</span>
-                        <input class="product-input" data-product-field="reviewer" value="${escapeHtml(item.reviewer)}" aria-label="${item.name}会审部门" />
+                        <span>执行时间</span>
+                        <input class="product-input" data-product-field="time" type="${getTimeInputType(item.time)}" value="${toDateTimeLocalValue(item.time)}" aria-label="${item.name}执行时间" />
+                      </label>
+                      <label class="product-field product-reviewer-field">
+                        <span>执行范围 / 会审部门</span>
+                        <input class="product-input" data-product-field="reviewer" value="${escapeHtml(item.reviewer)}" aria-label="${item.name}执行范围或会审部门" />
                       </label>
                     </div>
                     <label class="product-field">
-                      <span>上下架意见</span>
-                      <textarea class="product-opinion-editor" data-product-field="opinion" aria-label="${item.name}上下架意见">${escapeHtml(item.opinion)}</textarea>
+                      <span>执行说明</span>
+                      <textarea class="product-opinion-editor" data-product-field="opinion" aria-label="${item.name}执行说明">${escapeHtml(item.opinion)}</textarea>
                     </label>
                   </div>
                 </article>
@@ -282,13 +321,13 @@ function renderDepartmentPanels() {
             <div class="department-head-main">
               <div class="department-title">${department.name}</div>
               <div class="department-counts">
-                <span>上新 ${launchCount}</span>
+                <span>上架 ${launchCount}</span>
                 <span>下架 ${retireCount}</span>
+                <span>调优 ${optimizeCount}</span>
               </div>
             </div>
             <div class="department-actions">
-              <button class="department-add-button" type="button" data-add-product="${department.id}" data-add-type="launch">新增上新</button>
-              <button class="department-add-button" type="button" data-add-product="${department.id}" data-add-type="retire">新增下架</button>
+              <button class="department-add-button" type="button" data-add-product="${department.id}">新增事项</button>
             </div>
           </header>
           <div class="item-list">${itemCards}</div>
@@ -357,20 +396,19 @@ function saveReviewDrafts() {
 
 function setActiveType(nextType) {
   activeType = nextType;
-  typeFilter.querySelectorAll("button").forEach((item) => {
-    item.classList.toggle("active", item.dataset.type === activeType);
-  });
+  typeFilter.value = activeType;
 }
 
-function addProductChange(departmentId, type) {
+function addProductChange(departmentId) {
   saveProductDrafts();
 
   const department = departments.find((item) => item.id === departmentId);
+  const type = activeType === "all" ? "launch" : activeType;
   const nextProduct = {
     id: createId(`${departmentId}-${type}`),
     department: departmentId,
     type,
-    name: `新${typeText[type]}菜品`,
+    name: `新${typeText[type]}事项`,
     time: getDefaultTimeValue(),
     reviewer: "研发 / 市场 / 营运 / 厨政 / 采购",
     opinion: "请填写本菜品的会审意见和执行要求。",
@@ -425,13 +463,20 @@ async function loadSharedState() {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const rows = await response.json();
     const state = rows[0]?.description ? JSON.parse(rows[0].description) : null;
+    const requiresDataMigration = Boolean(state && state.dataRevision !== sharedDataRevision);
+    const incomingProducts = requiresDataMigration
+      ? [
+          ...defaultProductChanges.filter((item) => item.department === "hot"),
+          ...(state.products || []).filter((item) => item.department !== "hot"),
+        ]
+      : state?.products;
 
-    productChanges = mergeById(defaultProductChanges, state?.products);
+    productChanges = mergeById(defaultProductChanges, incomingProducts);
     reviewDepartments = mergeById(defaultReviewDepartments, state?.reviews);
     storageMode = "shared";
-    setSaveState(state ? "云端共享模式" : "正在初始化云端数据");
+    setSaveState(requiresDataMigration ? "正在更新热厨数据" : state ? "云端共享模式" : "正在初始化云端数据");
 
-    if (!state) await saveSharedState();
+    if (!state || requiresDataMigration) await saveSharedState();
   } catch {
     storageMode = "local";
     setSaveState("本地保存模式");
@@ -442,6 +487,7 @@ function getSharedPayload() {
   return {
     products: getCurrentProductChanges(),
     reviews: getCurrentReviews(),
+    dataRevision: sharedDataRevision,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -467,7 +513,7 @@ async function saveSharedState() {
       },
       body: JSON.stringify({
         id: sharedStateRowId,
-        title: "产品上新与下架会审共享状态",
+        title: "产品调整会审共享状态",
         description: JSON.stringify(getSharedPayload()),
         department: "系统",
         manual_status: "active",
@@ -547,7 +593,7 @@ function renderExportSvg() {
   ];
 
   parts.push(svgText(margin, 58, "Product Change Review Board", { size: 24, weight: 800, fill: brandColors.blue, maxChars: 80 }).markup);
-  parts.push(svgText(margin, 112, "产品上新与下架会审仪表盘", { size: 58, weight: 950, maxChars: 80 }).markup);
+  parts.push(svgText(margin, 112, "产品调整会审仪表盘", { size: 58, weight: 950, maxChars: 80 }).markup);
   parts.push(svgText(1260, 80, `导出日期：${new Intl.DateTimeFormat("zh-CN").format(new Date())}`, { size: 24, weight: 800, fill: brandColors.muted, maxChars: 30 }).markup);
 
   const departmentY = 170;
@@ -568,7 +614,7 @@ function renderExportSvg() {
     }
 
     items.forEach((item) => {
-      const typeColor = item.type === "launch" ? brandColors.blue : brandColors.orange;
+      const typeColor = item.type === "launch" ? brandColors.blue : item.type === "retire" ? brandColors.orange : brandColors.optimize;
       const titleBlock = svgText(x + 112, y + 44, item.name, {
         size: 30,
         weight: 950,
@@ -592,7 +638,7 @@ function renderExportSvg() {
       parts.push(`<rect x="${x + 24}" y="${y + 24}" width="70" height="70" rx="12" fill="${typeColor}"/>`);
       parts.push(svgText(x + 44, y + 70, typeLabel[item.type], { size: 34, weight: 950, fill: "#ffffff", maxChars: 2 }).markup);
       parts.push(titleBlock.markup);
-      parts.push(svgText(x + 112, timeY, `${typeText[item.type]}时间：${formatDateTime(item.time)}`, { size: 21, weight: 850, fill: brandColors.muted, maxChars: 17 }).markup);
+      parts.push(svgText(x + 112, timeY, `执行时间：${formatDateTime(item.time)}`, { size: 21, weight: 850, fill: brandColors.muted, maxChars: 17 }).markup);
       parts.push(svgText(x + 112, reviewerY, `会审：${item.reviewer}`, { size: 21, weight: 850, fill: brandColors.muted, maxChars: 17 }).markup);
       parts.push(opinionBlock.markup);
       y += height + 20;
@@ -737,7 +783,7 @@ async function exportDashboardPdf() {
     const pdfUrl = URL.createObjectURL(pdfBlob);
     const link = document.createElement("a");
     link.href = pdfUrl;
-    link.download = `产品上新与下架会审仪表盘-${new Date().toISOString().slice(0, 10)}.pdf`;
+    link.download = `产品调整会审仪表盘-${new Date().toISOString().slice(0, 10)}.pdf`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -754,12 +800,9 @@ async function exportDashboardPdf() {
   }
 }
 
-typeFilter.addEventListener("click", (event) => {
-  const button = event.target.closest("button[data-type]");
-  if (!button) return;
-
+typeFilter.addEventListener("change", (event) => {
   saveProductDrafts();
-  setActiveType(button.dataset.type);
+  setActiveType(event.target.value);
   renderDepartmentPanels();
 });
 
@@ -777,10 +820,16 @@ departmentGrid.addEventListener("input", (event) => {
   departmentGrid.saveTimer = window.setTimeout(saveProductDrafts, 420);
 });
 
+departmentGrid.addEventListener("change", (event) => {
+  if (!event.target.matches("[data-product-field]")) return;
+  saveProductDrafts();
+  renderDepartmentPanels();
+});
+
 departmentGrid.addEventListener("click", (event) => {
   const addButton = event.target.closest("[data-add-product]");
   if (addButton) {
-    addProductChange(addButton.dataset.addProduct, addButton.dataset.addType);
+    addProductChange(addButton.dataset.addProduct);
     return;
   }
 

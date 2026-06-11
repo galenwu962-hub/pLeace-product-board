@@ -793,9 +793,14 @@ departmentGrid.addEventListener("click", (event) => {
 exportPdfButton.addEventListener("click", exportDashboardPdf);
 
 async function initDashboard() {
-  await loadSharedState();
   renderDepartmentPanels();
   renderReviewHighlights();
+  loadSharedState()
+    .then(() => {
+      renderDepartmentPanels();
+      renderReviewHighlights();
+    })
+    .catch((error) => console.error("初始化云端数据失败", error));
 
   window.setInterval(() => {
     syncFromCloud().catch((error) => console.error("自动同步失败", error));

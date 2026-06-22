@@ -171,30 +171,16 @@ const exportPdfButton = document.querySelector("#exportPdfButton");
 const saveState = document.querySelector("#saveState");
 
 function formatDateTime(value) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit" }).format(new Date(`${value}T00:00:00`));
-  }
-  const date = new Date(value.replace(" ", "T"));
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date);
+  if (!value || value === "待定") return "待定";
+  const dateValue = String(value).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return value;
+  return new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit" }).format(new Date(`${dateValue}T00:00:00`));
 }
 
-function toDateTimeLocalValue(value) {
-  return value.replace(" ", "T");
-}
-
-function getTimeInputType(value) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? "date" : "datetime-local";
-}
-
-function normalizeDateTimeValue(value) {
-  return value.replace("T", " ");
+function toDateInputValue(value) {
+  if (!value || value === "待定") return "";
+  const dateValue = String(value).slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateValue) ? dateValue : "";
 }
 
 function createId(prefix) {
@@ -203,9 +189,8 @@ function createId(prefix) {
 
 function getDefaultTimeValue() {
   const date = new Date();
-  date.setSeconds(0, 0);
   const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-  return offsetDate.toISOString().slice(0, 16).replace("T", " ");
+  return offsetDate.toISOString().slice(0, 10);
 }
 
 function loadSavedProducts() {
@@ -235,9 +220,10 @@ function collectRenderedProductChanges() {
     const product = { ...(getCurrentProductChanges().find((item) => item.id === id) || {}) };
 
     card.querySelectorAll("[data-product-field]").forEach((field) => {
-      product[field.dataset.productField] =
-        field.dataset.productField === "time" ? normalizeDateTimeValue(field.value) : field.value.trim();
+      product[field.dataset.productField] = field.value.trim();
     });
+
+    if (card.querySelector("[data-time-tentative]")?.checked) product.time = "待定";
 
     renderedProducts.set(id, product);
   });
@@ -295,9 +281,15 @@ function renderDepartmentPanels() {
                           ${Object.entries(typeText).map(([value, label]) => `<option value="${value}" ${item.type === value ? "selected" : ""}>${label}</option>`).join("")}
                         </select>
                       </label>
-                      <label class="product-field">
+                      <label class="product-field product-time-field">
                         <span>执行时间</span>
-                        <input class="product-input" data-product-field="time" type="${getTimeInputType(item.time)}" value="${toDateTimeLocalValue(item.time)}" aria-label="${item.name}执行时间" />
+                        <div class="product-time-editor">
+                          <input class="product-input" data-product-field="time" type="date" value="${toDateInputValue(item.time)}" ${item.time === "待定" ? "disabled" : ""} aria-label="${item.name}执行日期" />
+                          <label class="tentative-toggle">
+                            <input type="checkbox" data-time-tentative ${item.time === "待定" ? "checked" : ""} aria-label="${item.name}执行时间待定" />
+                            <span>待定</span>
+                          </label>
+                        </div>
                       </label>
                       <label class="product-field product-reviewer-field">
                         <span>类别补充 / 执行范围</span>
@@ -813,6 +805,15 @@ departmentGrid.addEventListener("input", (event) => {
 });
 
 departmentGrid.addEventListener("change", (event) => {
+  if (event.target.matches("[data-time-tentative]")) {
+    const dateInput = event.target.closest(".product-time-editor").querySelector('[data-product-field="time"]');
+    dateInput.disabled = event.target.checked;
+    dateInput.value = event.target.checked ? "" : getDefaultTimeValue();
+    saveProductDrafts();
+    renderDepartmentPanels();
+    return;
+  }
+
   if (!event.target.matches("[data-product-field]")) return;
   saveProductDrafts();
   renderDepartmentPanels();

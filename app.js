@@ -462,7 +462,9 @@ async function loadSharedState() {
         ]
       : state?.products;
 
-    productChanges = mergeById(defaultProductChanges, incomingProducts);
+    productChanges = state
+      ? (incomingProducts || []).map((item) => ({ ...item }))
+      : defaultProductChanges.map((item) => ({ ...item }));
     reviewDepartments = mergeById(defaultReviewDepartments, state?.reviews);
     storageMode = "shared";
     setSaveState(requiresDataMigration ? "正在更新热厨数据" : state ? "阿里云共享模式" : "正在初始化云端数据");
@@ -486,7 +488,15 @@ function getSharedPayload() {
 function queueSharedSave() {
   if (storageMode !== "shared") return;
   window.clearTimeout(queueSharedSave.timer);
-  queueSharedSave.timer = window.setTimeout(saveSharedState, 520);
+  queueSharedSave.pending = true;
+  queueSharedSave.timer = window.setTimeout(async () => {
+    try {
+      await saveSharedState();
+    } finally {
+      queueSharedSave.pending = false;
+      queueSharedSave.timer = null;
+    }
+  }, 520);
 }
 
 async function saveSharedState() {
@@ -511,7 +521,7 @@ async function saveSharedState() {
 }
 
 async function syncFromCloud() {
-  if (storageMode !== "shared") return;
+  if (storageMode !== "shared" || queueSharedSave.pending) return;
   await loadSharedState();
   renderDepartmentPanels();
   renderReviewHighlights();

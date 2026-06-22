@@ -447,22 +447,12 @@ function mergeById(defaultItems, incomingItems) {
 
 async function loadSharedState() {
   try {
-    const { supabaseUrl, supabaseAnonKey, supabaseTable = "opening_tasks" } = runtimeConfig;
-    if (!supabaseUrl || !supabaseAnonKey) throw new Error("缺少 Supabase 配置");
+    const { sharedApiUrl } = runtimeConfig;
+    if (!sharedApiUrl) throw new Error("缺少阿里云共享接口配置");
 
-    const response = await fetch(
-      `${supabaseUrl}/rest/v1/${supabaseTable}?id=eq.${encodeURIComponent(sharedStateRowId)}&select=description,updated_at`,
-      {
-        cache: "no-store",
-        headers: {
-          apikey: supabaseAnonKey,
-          Authorization: `Bearer ${supabaseAnonKey}`,
-        },
-      },
-    );
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const rows = await response.json();
-    const state = rows[0]?.description ? JSON.parse(rows[0].description) : null;
+    const response = await fetch(sharedApiUrl, { cache: "no-store" });
+    if (!response.ok && response.status !== 404) throw new Error(`HTTP ${response.status}`);
+    const state = response.status === 404 ? null : await response.json();
     const requiresDataMigration = Boolean(state && state.dataRevision !== sharedDataRevision);
     const actualDepartments = new Set(["hot", "drink"]);
     const incomingProducts = requiresDataMigration
@@ -475,7 +465,7 @@ async function loadSharedState() {
     productChanges = mergeById(defaultProductChanges, incomingProducts);
     reviewDepartments = mergeById(defaultReviewDepartments, state?.reviews);
     storageMode = "shared";
-    setSaveState(requiresDataMigration ? "正在更新热厨数据" : state ? "云端共享模式" : "正在初始化云端数据");
+    setSaveState(requiresDataMigration ? "正在更新热厨数据" : state ? "阿里云共享模式" : "正在初始化云端数据");
 
     if (!state || requiresDataMigration) await saveSharedState();
   } catch {
@@ -503,23 +493,14 @@ async function saveSharedState() {
   if (storageMode !== "shared") return;
 
   try {
-    const { supabaseUrl, supabaseAnonKey, supabaseTable = "opening_tasks" } = runtimeConfig;
-    const response = await fetch(`${supabaseUrl}/rest/v1/${supabaseTable}?on_conflict=id`, {
-      method: "POST",
+    const { sharedApiUrl } = runtimeConfig;
+    if (!sharedApiUrl) throw new Error("缺少阿里云共享接口配置");
+    const response = await fetch(sharedApiUrl, {
+      method: "PUT",
       headers: {
-        apikey: supabaseAnonKey,
-        Authorization: `Bearer ${supabaseAnonKey}`,
         "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates,return=minimal",
       },
-      body: JSON.stringify({
-        id: sharedStateRowId,
-        title: "产品调整会审共享状态",
-        description: JSON.stringify(getSharedPayload()),
-        department: "系统",
-        manual_status: "active",
-        updated_at: new Date().toISOString(),
-      }),
+      body: JSON.stringify(getSharedPayload()),
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     setSaveState("已同步到云端");
@@ -854,7 +835,7 @@ async function initDashboard() {
 
   window.setInterval(() => {
     syncFromCloud().catch((error) => console.error("自动同步失败", error));
-  }, runtimeConfig.supabaseAutoSyncMs || 30000);
+  }, runtimeConfig.sharedAutoSyncMs || 15000);
 
   window.addEventListener("focus", () => {
     syncFromCloud().catch((error) => console.error("焦点同步失败", error));

@@ -133,6 +133,7 @@ let activeType = "all";
 let productChanges = defaultProductChanges.map((item) => ({ ...item }));
 let reviewDepartments = defaultReviewDepartments.map((item) => ({ ...item }));
 let storageMode = "local";
+let localEditVersion = 0;
 const reviewStorageKey = "product-change-dashboard-review-opinions-v1";
 const productStorageKey = "product-change-dashboard-product-changes-v3";
 
@@ -438,6 +439,8 @@ function mergeById(defaultItems, incomingItems) {
 }
 
 async function loadSharedState() {
+  const editVersionAtStart = localEditVersion;
+
   try {
     const { sharedApiUrl } = runtimeConfig;
     if (!sharedApiUrl) throw new Error("缺少阿里云共享接口配置");
@@ -445,6 +448,7 @@ async function loadSharedState() {
     const response = await fetch(sharedApiUrl, { cache: "no-store" });
     if (!response.ok && response.status !== 404) throw new Error(`HTTP ${response.status}`);
     const state = response.status === 404 ? null : await response.json();
+    if (storageMode === "shared" && editVersionAtStart !== localEditVersion) return false;
     const requiresDataMigration = Boolean(state && state.dataRevision !== sharedDataRevision);
     const actualDepartments = new Set(["hot", "drink"]);
     const incomingProducts = requiresDataMigration
@@ -462,9 +466,11 @@ async function loadSharedState() {
     setSaveState(requiresDataMigration ? "正在更新热厨数据" : state ? "阿里云共享模式" : "正在初始化云端数据");
 
     if (!state || requiresDataMigration) await saveSharedState();
+    return true;
   } catch {
     storageMode = "local";
     setSaveState("本地保存模式");
+    return false;
   }
 }
 
@@ -513,8 +519,9 @@ async function saveSharedState() {
 }
 
 async function syncFromCloud() {
-  if (storageMode !== "shared" || queueSharedSave.pending) return;
-  await loadSharedState();
+  if (storageMode !== "shared" || queueSharedSave.pending || document.activeElement?.matches("[data-review-editor]")) return;
+  const stateApplied = await loadSharedState();
+  if (!stateApplied) return;
   renderDepartmentPanels();
   renderReviewHighlights();
 }
@@ -792,9 +799,14 @@ typeFilter.addEventListener("change", (event) => {
 
 reviewGrid.addEventListener("input", (event) => {
   if (!event.target.matches("[data-review-editor]")) return;
+  localEditVersion += 1;
   setSaveState("正在保存");
-  window.clearTimeout(reviewGrid.saveTimer);
-  reviewGrid.saveTimer = window.setTimeout(saveReviewDrafts, 420);
+  saveReviewDrafts();
+});
+
+reviewGrid.addEventListener("change", (event) => {
+  if (!event.target.matches("[data-review-editor]")) return;
+  saveReviewDrafts();
 });
 
 departmentGrid.addEventListener("input", (event) => {

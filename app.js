@@ -149,6 +149,9 @@ const typeLabel = {
   optimize: "优",
 };
 
+const typeOrder = ["launch", "retire", "optimize"];
+const departmentById = Object.fromEntries(departments.map((department) => [department.id, department]));
+
 const brandColors = {
   blue: "#0072CE",
   blueDeep: "#0057A3",
@@ -244,86 +247,103 @@ function persistProductChanges(nextProducts, statusText = "已保存") {
   }
 }
 
-function getVisibleItems(departmentId) {
-  return getCurrentProductChanges().filter((item) => {
-    const departmentMatches = item.department === departmentId;
-    const typeMatches = activeType === "all" || item.type === activeType;
-    return departmentMatches && typeMatches;
-  });
+function getVisibleItems() {
+  return getCurrentProductChanges()
+    .filter((item) => activeType === "all" || item.type === activeType)
+    .sort((first, second) => {
+      const typeDiff = typeOrder.indexOf(first.type) - typeOrder.indexOf(second.type);
+      if (typeDiff) return typeDiff;
+      const departmentDiff =
+        departments.findIndex((department) => department.id === first.department) -
+        departments.findIndex((department) => department.id === second.department);
+      if (departmentDiff) return departmentDiff;
+      return String(first.time || "").localeCompare(String(second.time || ""));
+    });
+}
+
+function renderProductCard(item) {
+  const department = departmentById[item.department] || departments[0];
+
+  return `
+    <article class="product-card ${item.type}">
+      <div class="change-badge">${typeLabel[item.type]}</div>
+      <div class="product-edit-grid" data-product-id="${item.id}">
+        <div class="product-edit-head">
+          <label class="product-field product-field-name">
+            <span>菜品</span>
+            <input class="product-input product-name-input" data-product-field="name" value="${escapeHtml(item.name)}" aria-label="${department.name}${typeText[item.type]}菜品名称" />
+          </label>
+          <button class="delete-product-button" type="button" data-delete-product="${item.id}" aria-label="删除${item.name}">删除</button>
+        </div>
+        <div class="product-meta-edit">
+          <label class="product-field product-department-field">
+            <span>部门</span>
+            <select class="product-input" data-product-field="department" aria-label="${item.name}所属部门">
+              ${departments.map((option) => `<option value="${option.id}" ${item.department === option.id ? "selected" : ""}>${option.name}</option>`).join("")}
+            </select>
+          </label>
+          <label class="product-field product-type-field">
+            <span>事项类别</span>
+            <select class="product-input product-type-select" data-product-field="type" aria-label="${item.name}事项类别">
+              ${Object.entries(typeText).map(([value, label]) => `<option value="${value}" ${item.type === value ? "selected" : ""}>${label}</option>`).join("")}
+            </select>
+          </label>
+          <label class="product-field product-time-field">
+            <span>执行时间</span>
+            <div class="product-time-editor">
+              <input class="product-input" data-product-field="time" type="date" value="${toDateInputValue(item.time)}" ${item.time === "待定" ? "disabled" : ""} aria-label="${item.name}执行日期" />
+              <label class="tentative-toggle">
+                <input type="checkbox" data-time-tentative ${item.time === "待定" ? "checked" : ""} aria-label="${item.name}执行时间待定" />
+                <span>待定</span>
+              </label>
+            </div>
+          </label>
+          <label class="product-field product-reviewer-field">
+            <span>类别补充 / 执行范围</span>
+            <input class="product-input" data-product-field="reviewer" value="${escapeHtml(item.reviewer)}" aria-label="${item.name}类别补充或执行范围" />
+          </label>
+        </div>
+        <label class="product-field">
+          <span>执行说明</span>
+          <textarea class="product-opinion-editor" data-product-field="opinion" aria-label="${item.name}执行说明">${escapeHtml(item.opinion)}</textarea>
+        </label>
+      </div>
+    </article>
+  `;
 }
 
 function renderDepartmentPanels() {
-  departmentGrid.innerHTML = departments
-    .map((department) => {
-      const visibleItems = getVisibleItems(department.id);
-      const allDepartmentItems = getCurrentProductChanges().filter((item) => item.department === department.id);
-      const launchCount = allDepartmentItems.filter((item) => item.type === "launch").length;
-      const retireCount = allDepartmentItems.filter((item) => item.type === "retire").length;
-      const optimizeCount = allDepartmentItems.filter((item) => item.type === "optimize").length;
+  const visibleItems = getVisibleItems();
+  const visibleTypes = typeOrder.filter((type) => activeType === "all" || activeType === type);
 
-      const itemCards = visibleItems.length
-        ? visibleItems
-            .map(
-              (item) => `
-                <article class="product-card ${item.type}">
-                  <div class="change-badge">${typeLabel[item.type]}</div>
-                  <div class="product-edit-grid" data-product-id="${item.id}">
-                    <div class="product-edit-head">
-                      <label class="product-field product-field-name">
-                        <span>菜品</span>
-                        <input class="product-input product-name-input" data-product-field="name" value="${escapeHtml(item.name)}" aria-label="${department.name}${typeText[item.type]}菜品名称" />
-                      </label>
-                      <button class="delete-product-button" type="button" data-delete-product="${item.id}" aria-label="删除${item.name}">删除</button>
-                    </div>
-                    <div class="product-meta-edit">
-                      <label class="product-field product-type-field">
-                        <span>事项类别</span>
-                        <select class="product-input product-type-select" data-product-field="type" aria-label="${item.name}事项类别">
-                          ${Object.entries(typeText).map(([value, label]) => `<option value="${value}" ${item.type === value ? "selected" : ""}>${label}</option>`).join("")}
-                        </select>
-                      </label>
-                      <label class="product-field product-time-field">
-                        <span>执行时间</span>
-                        <div class="product-time-editor">
-                          <input class="product-input" data-product-field="time" type="date" value="${toDateInputValue(item.time)}" ${item.time === "待定" ? "disabled" : ""} aria-label="${item.name}执行日期" />
-                          <label class="tentative-toggle">
-                            <input type="checkbox" data-time-tentative ${item.time === "待定" ? "checked" : ""} aria-label="${item.name}执行时间待定" />
-                            <span>待定</span>
-                          </label>
-                        </div>
-                      </label>
-                      <label class="product-field product-reviewer-field">
-                        <span>类别补充 / 执行范围</span>
-                        <input class="product-input" data-product-field="reviewer" value="${escapeHtml(item.reviewer)}" aria-label="${item.name}类别补充或执行范围" />
-                      </label>
-                    </div>
-                    <label class="product-field">
-                      <span>执行说明</span>
-                      <textarea class="product-opinion-editor" data-product-field="opinion" aria-label="${item.name}执行说明">${escapeHtml(item.opinion)}</textarea>
-                    </label>
-                  </div>
-                </article>
-              `,
-            )
-            .join("")
-        : `<div class="empty-state">当前筛选下暂无菜品</div>`;
+  departmentGrid.innerHTML = visibleTypes
+    .map((type) => {
+      const typeItems = visibleItems.filter((item) => item.type === type);
+      const typeTone = type === "launch" ? "hot" : type === "retire" ? "retire" : "optimize";
+      const addButtons = departments
+        .map((department) => `<button class="department-add-button" type="button" data-add-product="${department.id}" data-add-type="${type}">新增${department.name}</button>`)
+        .join("");
 
       return `
-        <section class="department-panel">
-          <header class="department-head ${department.tone}">
-            <div class="department-head-main">
-              <div class="department-title">${department.name}</div>
-              <div class="department-counts">
-                <span>上架 ${launchCount}</span>
-                <span>下架 ${retireCount}</span>
-                <span>调优 ${optimizeCount}</span>
+        <section class="change-section ${type}">
+          <header class="change-section-head ${typeTone}">
+            <div class="change-section-title">
+              <span class="change-section-badge">${typeLabel[type]}</span>
+              <div>
+                <div class="department-title">${typeText[type]}</div>
+                <div class="department-counts">
+                  ${departments
+                    .map((department) => {
+                      const count = typeItems.filter((item) => item.department === department.id).length;
+                      return `<span>${department.name} ${count}</span>`;
+                    })
+                    .join("")}
+                </div>
               </div>
             </div>
-            <div class="department-actions">
-              <button class="department-add-button" type="button" data-add-product="${department.id}">新增事项</button>
-            </div>
+            <div class="department-actions">${addButtons}</div>
           </header>
-          <div class="item-list">${itemCards}</div>
+          <div class="item-list">${typeItems.length ? typeItems.map(renderProductCard).join("") : `<div class="empty-state">当前筛选下暂无事项</div>`}</div>
         </section>
       `;
     })
@@ -392,11 +412,10 @@ function setActiveType(nextType) {
   typeFilter.value = activeType;
 }
 
-function addProductChange(departmentId) {
+function addProductChange(departmentId, forcedType) {
   saveProductDrafts();
 
-  const department = departments.find((item) => item.id === departmentId);
-  const type = activeType === "all" ? "launch" : activeType;
+  const type = forcedType || (activeType === "all" ? "launch" : activeType);
   const nextProduct = {
     id: createId(`${departmentId}-${type}`),
     department: departmentId,
@@ -409,7 +428,6 @@ function addProductChange(departmentId) {
   };
 
   persistProductChanges([...getCurrentProductChanges(), nextProduct], "已新增");
-  if (activeType !== "all" && activeType !== type) setActiveType(type);
   renderDepartmentPanels();
 }
 
@@ -575,7 +593,7 @@ function renderExportSvg() {
   const gap = 16;
   const cardRadius = 14;
   const currentProducts = getCurrentProductChanges();
-  const visibleItems = currentProducts.filter((item) => activeType === "all" || item.type === activeType);
+  const visibleItems = getVisibleItems();
   const reviews = getCurrentReviews();
   const parts = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="__HEIGHT__" viewBox="0 0 ${width} __HEIGHT__">`,
@@ -587,75 +605,82 @@ function renderExportSvg() {
   parts.push(svgText(margin, 112, "产品调整会审仪表盘", { size: 58, weight: 950, maxChars: 80 }).markup);
   parts.push(svgText(1260, 80, `导出日期：${new Intl.DateTimeFormat("zh-CN").format(new Date())}`, { size: 24, weight: 800, fill: brandColors.muted, maxChars: 30 }).markup);
 
-  const departmentY = 170;
-  const hotW = 920;
-  const sideW = width - margin * 2 - gap - hotW;
-  const sideX = margin + hotW + gap;
+  let sectionY = 170;
+  const sectionW = width - margin * 2;
+  const columnGap = 18;
+  const cardW = (sectionW - columnGap) / 2;
+  const typeColors = {
+    launch: brandColors.blue,
+    retire: brandColors.orange,
+    optimize: brandColors.optimize,
+  };
+  const visibleTypes = typeOrder.filter((type) => activeType === "all" || activeType === type);
 
-  function renderDepartmentSection(department, x, startY, sectionW, compact = false) {
-    const color = { hot: brandColors.blue, drink: brandColors.blueDeep, bake: brandColors.blueDark }[department.tone];
-    const items = visibleItems.filter((item) => item.department === department.id);
-    const allDepartmentItems = currentProducts.filter((item) => item.department === department.id);
-    const launchCount = allDepartmentItems.filter((item) => item.type === "launch").length;
-    const retireCount = allDepartmentItems.filter((item) => item.type === "retire").length;
-    const optimizeCount = allDepartmentItems.filter((item) => item.type === "optimize").length;
-    const titleSize = compact ? 38 : 46;
-    const titleX = x + 22;
-    let y = startY;
-
-    parts.push(`<rect x="${x}" y="${y}" width="${sectionW}" height="86" rx="${cardRadius}" fill="${color}"/>`);
-    parts.push(svgText(titleX, y + 57, department.name, { size: titleSize, weight: 950, fill: "#ffffff", maxChars: 8 }).markup);
-    parts.push(svgText(x + sectionW - 252, y + 54, `上架 ${launchCount}  下架 ${retireCount}  调优 ${optimizeCount}`, { size: compact ? 18 : 22, weight: 850, fill: "#ffffff", maxChars: 30 }).markup);
-    y += 106;
-
-    if (!items.length) {
-      parts.push(`<rect x="${x}" y="${y}" width="${sectionW}" height="114" rx="${cardRadius}" fill="#ffffff" stroke="${brandColors.line}"/>`);
-      parts.push(svgText(x + 110, y + 70, "当前筛选下暂无菜品", { size: 28, weight: 850, fill: brandColors.muted, maxChars: 18 }).markup);
-      return y + 136;
-    }
-
-    items.forEach((item) => {
-      const typeColor = item.type === "launch" ? brandColors.blue : item.type === "retire" ? brandColors.orange : brandColors.optimize;
-      const textX = x + (compact ? 104 : 112);
-      const titleBlock = svgText(textX, y + 44, item.name, {
-        size: compact ? 27 : 32,
-        weight: 950,
-        maxChars: compact ? 12 : 24,
-        lineHeight: compact ? 34 : 40,
-      });
-      const timeY = y + 44 + titleBlock.height + 8;
-      const scopeText = item.reviewer ? `范围：${item.reviewer}` : "范围：全部门店";
-      const scopeY = timeY + 32;
-      const opinionY = scopeY + 38;
-      const opinionText = item.opinion || "待补充执行说明";
-      const opinionBlock = svgText(x + 24, opinionY, opinionText, {
-        size: compact ? 20 : 23,
-        weight: 750,
-        fill: brandColors.ink,
-        maxChars: compact ? 20 : 39,
-        lineHeight: compact ? 30 : 34,
-      });
-      const height = Math.max(188, opinionY + opinionBlock.height - y + 28);
-
-      parts.push(`<rect x="${x}" y="${y}" width="${sectionW}" height="${height}" rx="${cardRadius}" fill="#ffffff" stroke="${brandColors.line}"/>`);
-      parts.push(`<rect x="${x}" y="${y}" width="10" height="${height}" rx="5" fill="${typeColor}"/>`);
-      parts.push(`<rect x="${x + 24}" y="${y + 24}" width="${compact ? 62 : 70}" height="${compact ? 62 : 70}" rx="12" fill="${typeColor}"/>`);
-      parts.push(svgText(x + (compact ? 42 : 44), y + (compact ? 65 : 70), typeLabel[item.type], { size: compact ? 30 : 34, weight: 950, fill: "#ffffff", maxChars: 2 }).markup);
-      parts.push(titleBlock.markup);
-      parts.push(svgText(textX, timeY, `执行时间：${formatDateTime(item.time)}`, { size: compact ? 19 : 21, weight: 850, fill: brandColors.muted, maxChars: compact ? 18 : 28 }).markup);
-      parts.push(svgText(textX, scopeY, scopeText, { size: compact ? 19 : 21, weight: 850, fill: brandColors.muted, maxChars: compact ? 18 : 32 }).markup);
-      parts.push(opinionBlock.markup);
-      y += height + 20;
+  function renderExportCard(item, x, y) {
+    const department = departmentById[item.department] || departments[0];
+    const typeColor = typeColors[item.type];
+    const textX = x + 112;
+    const titleBlock = svgText(textX, y + 42, item.name, {
+      size: 30,
+      weight: 950,
+      maxChars: 24,
+      lineHeight: 38,
     });
+    const metaY = y + 42 + titleBlock.height + 8;
+    const scopeText = item.reviewer ? `范围：${item.reviewer}` : "范围：全部门店";
+    const opinionY = metaY + 70;
+    const opinionBlock = svgText(x + 24, opinionY, item.opinion || "待补充执行说明", {
+      size: 22,
+      weight: 750,
+      fill: brandColors.ink,
+      maxChars: 32,
+      lineHeight: 32,
+    });
+    const height = Math.max(190, opinionY + opinionBlock.height - y + 28);
 
-    return y + 8;
+    parts.push(`<rect x="${x}" y="${y}" width="${cardW}" height="${height}" rx="${cardRadius}" fill="#ffffff" stroke="${brandColors.line}"/>`);
+    parts.push(`<rect x="${x}" y="${y}" width="10" height="${height}" rx="5" fill="${typeColor}"/>`);
+    parts.push(`<rect x="${x + 24}" y="${y + 24}" width="70" height="70" rx="12" fill="${typeColor}"/>`);
+    parts.push(svgText(x + 44, y + 70, typeLabel[item.type], { size: 34, weight: 950, fill: "#ffffff", maxChars: 2 }).markup);
+    parts.push(titleBlock.markup);
+    parts.push(svgText(textX, metaY, `部门：${department.name}    执行时间：${formatDateTime(item.time)}`, { size: 21, weight: 850, fill: brandColors.muted, maxChars: 32 }).markup);
+    parts.push(svgText(textX, metaY + 34, scopeText, { size: 21, weight: 850, fill: brandColors.muted, maxChars: 32 }).markup);
+    parts.push(opinionBlock.markup);
+    return height;
   }
 
-  const hotBottom = renderDepartmentSection(departments[0], margin, departmentY, hotW, false);
-  const drinkBottom = renderDepartmentSection(departments[1], sideX, departmentY, sideW, true);
-  const bakeBottom = renderDepartmentSection(departments[2], sideX, drinkBottom + 26, sideW, true);
+  visibleTypes.forEach((type) => {
+    const typeItems = visibleItems.filter((item) => item.type === type);
+    const color = typeColors[type];
+    const counts = departments
+      .map((department) => `${department.name} ${typeItems.filter((item) => item.department === department.id).length}`)
+      .join("  ");
 
-  let reviewY = Math.max(hotBottom, bakeBottom) + 48;
+    parts.push(`<rect x="${margin}" y="${sectionY}" width="${sectionW}" height="86" rx="${cardRadius}" fill="${color}"/>`);
+    parts.push(`<rect x="${margin + 22}" y="${sectionY + 16}" width="54" height="54" rx="10" fill="rgba(255,255,255,0.22)"/>`);
+    parts.push(svgText(margin + 38, sectionY + 53, typeLabel[type], { size: 30, weight: 950, fill: "#ffffff", maxChars: 2 }).markup);
+    parts.push(svgText(margin + 94, sectionY + 58, typeText[type], { size: 44, weight: 950, fill: "#ffffff", maxChars: 8 }).markup);
+    parts.push(svgText(width - margin - 420, sectionY + 55, counts, { size: 22, weight: 850, fill: "#ffffff", maxChars: 34 }).markup);
+    sectionY += 106;
+
+    if (!typeItems.length) {
+      parts.push(`<rect x="${margin}" y="${sectionY}" width="${sectionW}" height="116" rx="${cardRadius}" fill="#ffffff" stroke="${brandColors.line}"/>`);
+      parts.push(svgText(margin + 34, sectionY + 72, "当前筛选下暂无事项", { size: 28, weight: 850, fill: brandColors.muted, maxChars: 24 }).markup);
+      sectionY += 142;
+      return;
+    }
+
+    const columnYs = [sectionY, sectionY];
+    typeItems.forEach((item) => {
+      const columnIndex = columnYs[0] <= columnYs[1] ? 0 : 1;
+      const x = margin + columnIndex * (cardW + columnGap);
+      const cardH = renderExportCard(item, x, columnYs[columnIndex]);
+      columnYs[columnIndex] += cardH + 18;
+    });
+    sectionY = Math.max(...columnYs) + 30;
+  });
+
+  let reviewY = sectionY + 18;
   parts.push(svgText(margin, reviewY, "会审部门意见", { size: 42, weight: 950, maxChars: 20 }).markup);
   reviewY += 34;
 
@@ -851,7 +876,7 @@ departmentGrid.addEventListener("change", (event) => {
 departmentGrid.addEventListener("click", (event) => {
   const addButton = event.target.closest("[data-add-product]");
   if (addButton) {
-    addProductChange(addButton.dataset.addProduct);
+    addProductChange(addButton.dataset.addProduct, addButton.dataset.addType);
     return;
   }
 

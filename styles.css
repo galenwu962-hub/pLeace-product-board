@@ -284,8 +284,24 @@ h2 {
 
 .department-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.65fr) minmax(360px, 0.95fr);
+  grid-template-areas:
+    "hot drink"
+    "hot bake";
   gap: 18px;
+  align-items: start;
+}
+
+.department-panel:nth-child(1) {
+  grid-area: hot;
+}
+
+.department-panel:nth-child(2) {
+  grid-area: drink;
+}
+
+.department-panel:nth-child(3) {
+  grid-area: bake;
 }
 
 .department-panel {
@@ -491,18 +507,39 @@ h2 {
   line-height: 1.12;
 }
 
+.department-panel:not(:first-child) .product-edit-head {
+  grid-template-columns: 1fr;
+}
+
+.department-panel:not(:first-child) .delete-product-button {
+  justify-self: end;
+  min-height: 40px;
+}
+
+.department-panel:not(:first-child) .product-name-input {
+  font-size: clamp(21px, 1.55vw, 29px);
+}
+
+.department-panel:not(:first-child) .product-meta-edit {
+  grid-template-columns: 1fr;
+}
+
+.department-panel:not(:first-child) .product-time-editor input[type="date"] {
+  min-width: 0;
+}
+
 .product-meta-edit {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(160px, 0.76fr) minmax(0, 1fr);
   gap: 10px;
 }
 
 .product-reviewer-field {
-  grid-column: 1 / -1;
+  grid-column: auto;
 }
 
 .product-time-field {
-  grid-column: 1 / -1;
+  grid-column: auto;
 }
 
 .product-time-editor {
@@ -684,9 +721,22 @@ h2 {
 
 @media (max-width: 1500px) {
   .summary-band,
-  .department-grid,
   .review-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .department-grid {
+    grid-template-columns: minmax(0, 1.5fr) minmax(340px, 0.9fr);
+  }
+}
+
+@media (max-width: 1180px) {
+  .department-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "hot"
+      "drink"
+      "bake";
   }
 }
 
@@ -713,7 +763,6 @@ h2 {
   }
 
   .summary-band,
-  .department-grid,
   .review-grid {
     grid-template-columns: 1fr;
   }

@@ -588,57 +588,74 @@ function renderExportSvg() {
   parts.push(svgText(1260, 80, `导出日期：${new Intl.DateTimeFormat("zh-CN").format(new Date())}`, { size: 24, weight: 800, fill: brandColors.muted, maxChars: 30 }).markup);
 
   const departmentY = 170;
-  const departmentW = (width - margin * 2 - gap * 2) / 3;
-  const departmentBottoms = departments.map((department, index) => {
-    const x = margin + index * (departmentW + gap);
+  const hotW = 920;
+  const sideW = width - margin * 2 - gap - hotW;
+  const sideX = margin + hotW + gap;
+
+  function renderDepartmentSection(department, x, startY, sectionW, compact = false) {
     const color = { hot: brandColors.blue, drink: brandColors.blueDeep, bake: brandColors.blueDark }[department.tone];
     const items = visibleItems.filter((item) => item.department === department.id);
-    let y = departmentY;
-    parts.push(`<rect x="${x}" y="${y}" width="${departmentW}" height="86" rx="${cardRadius}" fill="${color}"/>`);
-    parts.push(svgText(x + 22, y + 57, department.name, { size: 44, weight: 950, fill: "#ffffff", maxChars: 8 }).markup);
+    const allDepartmentItems = currentProducts.filter((item) => item.department === department.id);
+    const launchCount = allDepartmentItems.filter((item) => item.type === "launch").length;
+    const retireCount = allDepartmentItems.filter((item) => item.type === "retire").length;
+    const optimizeCount = allDepartmentItems.filter((item) => item.type === "optimize").length;
+    const titleSize = compact ? 38 : 46;
+    const titleX = x + 22;
+    let y = startY;
+
+    parts.push(`<rect x="${x}" y="${y}" width="${sectionW}" height="86" rx="${cardRadius}" fill="${color}"/>`);
+    parts.push(svgText(titleX, y + 57, department.name, { size: titleSize, weight: 950, fill: "#ffffff", maxChars: 8 }).markup);
+    parts.push(svgText(x + sectionW - 252, y + 54, `上架 ${launchCount}  下架 ${retireCount}  调优 ${optimizeCount}`, { size: compact ? 18 : 22, weight: 850, fill: "#ffffff", maxChars: 30 }).markup);
     y += 106;
 
     if (!items.length) {
-      parts.push(`<rect x="${x}" y="${y}" width="${departmentW}" height="114" rx="${cardRadius}" fill="#ffffff" stroke="${brandColors.line}"/>`);
+      parts.push(`<rect x="${x}" y="${y}" width="${sectionW}" height="114" rx="${cardRadius}" fill="#ffffff" stroke="${brandColors.line}"/>`);
       parts.push(svgText(x + 110, y + 70, "当前筛选下暂无菜品", { size: 28, weight: 850, fill: brandColors.muted, maxChars: 18 }).markup);
       return y + 136;
     }
 
     items.forEach((item) => {
       const typeColor = item.type === "launch" ? brandColors.blue : item.type === "retire" ? brandColors.orange : brandColors.optimize;
-      const titleBlock = svgText(x + 112, y + 44, item.name, {
-        size: 30,
+      const textX = x + (compact ? 104 : 112);
+      const titleBlock = svgText(textX, y + 44, item.name, {
+        size: compact ? 27 : 32,
         weight: 950,
-        maxChars: 12,
-        lineHeight: 38,
+        maxChars: compact ? 12 : 24,
+        lineHeight: compact ? 34 : 40,
       });
       const timeY = y + 44 + titleBlock.height + 8;
-      const reviewerY = timeY + 32;
-      const opinionY = reviewerY + 38;
-      const opinionBlock = svgText(x + 24, opinionY, item.opinion, {
-        size: 22,
+      const scopeText = item.reviewer ? `范围：${item.reviewer}` : "范围：全部门店";
+      const scopeY = timeY + 32;
+      const opinionY = scopeY + 38;
+      const opinionText = item.opinion || "待补充执行说明";
+      const opinionBlock = svgText(x + 24, opinionY, opinionText, {
+        size: compact ? 20 : 23,
         weight: 750,
         fill: brandColors.ink,
-        maxChars: 19,
-        lineHeight: 32,
+        maxChars: compact ? 20 : 39,
+        lineHeight: compact ? 30 : 34,
       });
       const height = Math.max(188, opinionY + opinionBlock.height - y + 28);
 
-      parts.push(`<rect x="${x}" y="${y}" width="${departmentW}" height="${height}" rx="${cardRadius}" fill="#ffffff" stroke="${brandColors.line}"/>`);
+      parts.push(`<rect x="${x}" y="${y}" width="${sectionW}" height="${height}" rx="${cardRadius}" fill="#ffffff" stroke="${brandColors.line}"/>`);
       parts.push(`<rect x="${x}" y="${y}" width="10" height="${height}" rx="5" fill="${typeColor}"/>`);
-      parts.push(`<rect x="${x + 24}" y="${y + 24}" width="70" height="70" rx="12" fill="${typeColor}"/>`);
-      parts.push(svgText(x + 44, y + 70, typeLabel[item.type], { size: 34, weight: 950, fill: "#ffffff", maxChars: 2 }).markup);
+      parts.push(`<rect x="${x + 24}" y="${y + 24}" width="${compact ? 62 : 70}" height="${compact ? 62 : 70}" rx="12" fill="${typeColor}"/>`);
+      parts.push(svgText(x + (compact ? 42 : 44), y + (compact ? 65 : 70), typeLabel[item.type], { size: compact ? 30 : 34, weight: 950, fill: "#ffffff", maxChars: 2 }).markup);
       parts.push(titleBlock.markup);
-      parts.push(svgText(x + 112, timeY, `执行时间：${formatDateTime(item.time)}`, { size: 21, weight: 850, fill: brandColors.muted, maxChars: 17 }).markup);
-      parts.push(svgText(x + 112, reviewerY, `会审：${item.reviewer}`, { size: 21, weight: 850, fill: brandColors.muted, maxChars: 17 }).markup);
+      parts.push(svgText(textX, timeY, `执行时间：${formatDateTime(item.time)}`, { size: compact ? 19 : 21, weight: 850, fill: brandColors.muted, maxChars: compact ? 18 : 28 }).markup);
+      parts.push(svgText(textX, scopeY, scopeText, { size: compact ? 19 : 21, weight: 850, fill: brandColors.muted, maxChars: compact ? 18 : 32 }).markup);
       parts.push(opinionBlock.markup);
       y += height + 20;
     });
 
     return y + 8;
-  });
+  }
 
-  let reviewY = Math.max(...departmentBottoms) + 48;
+  const hotBottom = renderDepartmentSection(departments[0], margin, departmentY, hotW, false);
+  const drinkBottom = renderDepartmentSection(departments[1], sideX, departmentY, sideW, true);
+  const bakeBottom = renderDepartmentSection(departments[2], sideX, drinkBottom + 26, sideW, true);
+
+  let reviewY = Math.max(hotBottom, bakeBottom) + 48;
   parts.push(svgText(margin, reviewY, "会审部门意见", { size: 42, weight: 950, maxChars: 20 }).markup);
   reviewY += 34;
 

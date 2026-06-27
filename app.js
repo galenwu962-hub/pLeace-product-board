@@ -444,11 +444,17 @@ function deleteProductChange(productId) {
   renderDepartmentPanels();
 }
 
+function getIdleSaveStateText() {
+  if (storageMode === "shared") return "线上共享，内容自动同步";
+  if (runtimeConfig.sharedApiUrl) return "本地缓存，正在重试云端同步";
+  return "内容自动保存";
+}
+
 function setSaveState(text) {
   saveState.textContent = text;
   window.clearTimeout(setSaveState.timer);
   setSaveState.timer = window.setTimeout(() => {
-    saveState.textContent = storageMode === "shared" ? "线上共享，内容自动同步" : "内容自动保存";
+    saveState.textContent = getIdleSaveStateText();
   }, 1600);
 }
 
@@ -491,7 +497,7 @@ async function loadSharedState() {
     return true;
   } catch {
     storageMode = "local";
-    setSaveState("本地保存模式");
+    setSaveState(runtimeConfig.sharedApiUrl ? "云端连接失败，使用本地缓存" : "本地保存模式");
     return false;
   }
 }
@@ -540,8 +546,15 @@ async function saveSharedState() {
   }
 }
 
+function shouldSkipCloudSync() {
+  return (
+    queueSharedSave.pending ||
+    document.activeElement?.matches("[data-review-editor], [data-product-field], [data-time-tentative]")
+  );
+}
+
 async function syncFromCloud() {
-  if (storageMode !== "shared" || queueSharedSave.pending || document.activeElement?.matches("[data-review-editor]")) return;
+  if (!runtimeConfig.sharedApiUrl || shouldSkipCloudSync()) return;
   const stateApplied = await loadSharedState();
   if (!stateApplied) return;
   renderDepartmentPanels();

@@ -139,6 +139,7 @@ let productChanges = defaultProductChanges.map((item) => ({ ...item }));
 let reviewDepartments = defaultReviewDepartments.map((item) => ({ ...item }));
 let storageMode = "local";
 let localEditVersion = 0;
+let explicitClearAt = null;
 const reviewStorageKey = "product-change-dashboard-review-opinions-v1";
 const productStorageKey = "product-change-dashboard-product-changes-v3";
 
@@ -249,6 +250,7 @@ function collectRenderedProductChanges() {
 
 function persistProductChanges(nextProducts, statusText = "已保存") {
   productChanges = nextProducts;
+  if (productChanges.length) explicitClearAt = null;
 
   if (storageMode === "shared") {
     queueSharedSave();
@@ -526,6 +528,7 @@ function applySharedState(state) {
     ? (incomingProducts || []).map((item) => ({ ...item }))
     : defaultProductChanges.map((item) => ({ ...item }));
   reviewDepartments = mergeById(defaultReviewDepartments, state?.reviews);
+  explicitClearAt = state?.emptyIntent ? state.clearedAt || new Date().toISOString() : null;
   return requiresDataMigration;
 }
 
@@ -537,6 +540,16 @@ async function loadFallbackState() {
   storageMode = "fallback";
   setSaveState("云端连接失败，已加载兜底数据");
   return true;
+}
+
+function shouldKeepCurrentFallbackState(state) {
+  return (
+    storageMode === "fallback" &&
+    productChanges.length > 0 &&
+    Array.isArray(state?.products) &&
+    state.products.length === 0 &&
+    state.emptyIntent !== true
+  );
 }
 
 async function fetchSharedState(sharedApiUrl) {
@@ -559,6 +572,13 @@ async function loadSharedState() {
     const response = await fetchSharedState(sharedApiUrl);
     if (!response.ok && response.status !== 404) throw new Error(`HTTP ${response.status}`);
     const state = response.status === 404 ? null : await response.json();
+    if (shouldKeepCurrentFallbackState(state)) {
+      storageMode = "shared";
+      setSaveState("云端为空，正在恢复兜底数据");
+      const saved = await saveSharedState();
+      if (!saved) storageMode = "fallback";
+      return true;
+    }
     if (storageMode === "shared" && editVersionAtStart !== localEditVersion) return false;
     const requiresDataMigration = applySharedState(state);
     storageMode = "shared";
@@ -586,10 +606,13 @@ async function loadSharedState() {
 }
 
 function getSharedPayload() {
+  const products = getCurrentProductChanges();
   return {
-    products: getCurrentProductChanges(),
+    products,
     reviews: getCurrentReviews(),
     dataRevision: sharedDataRevision,
+    emptyIntent: products.length === 0 && Boolean(explicitClearAt),
+    clearedAt: explicitClearAt || undefined,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -1128,8 +1151,10 @@ function setupLocalRecovery() {
 function clearAllContent() {
   productChanges = [];
   reviewDepartments = reviewDepartments.map((item) => ({ ...item, text: "" }));
+  explicitClearAt = new Date().toISOString();
 
-  if (storageMode === "shared") {
+  if (hasSharedSync) {
+    storageMode = "shared";
     queueSharedSave();
     setSaveState("正在同步清空");
   } else {

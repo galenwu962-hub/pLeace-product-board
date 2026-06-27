@@ -8,6 +8,7 @@ const runtimeConfig = window.DEJI_CONFIG || {};
 const hasSharedSync = Boolean(runtimeConfig.sharedApiUrl);
 const urlParams = new URLSearchParams(window.location.search);
 const recoveryMode = urlParams.get("recoverLocal") === "1";
+const recoveryPinnedKey = "product-change-dashboard-local-recovery-pinned-v1";
 const sharedStateRowId = "product-change-dashboard-state-v1";
 const sharedDataRevision = "2026-06-hot-drink-actual-v3";
 
@@ -204,7 +205,7 @@ function getDefaultTimeValue() {
 }
 
 function loadSavedProducts() {
-  if (storageMode === "shared" || hasSharedSync) return {};
+  if (storageMode === "shared") return {};
   try {
     return JSON.parse(localStorage.getItem(productStorageKey)) || {};
   } catch {
@@ -214,7 +215,6 @@ function loadSavedProducts() {
 
 function getCurrentProductChanges() {
   if (storageMode === "shared") return productChanges;
-  if (hasSharedSync) return productChanges;
   const savedProducts = loadSavedProducts();
   if (Array.isArray(savedProducts)) return savedProducts;
   return productChanges.map((item) => ({
@@ -376,7 +376,7 @@ function renderReviewHighlights() {
 }
 
 function loadSavedReviews() {
-  if (storageMode === "shared" || hasSharedSync) return {};
+  if (storageMode === "shared") return {};
   try {
     return JSON.parse(localStorage.getItem(reviewStorageKey)) || {};
   } catch {
@@ -386,7 +386,6 @@ function loadSavedReviews() {
 
 function getCurrentReviews() {
   if (storageMode === "shared") return reviewDepartments;
-  if (hasSharedSync) return reviewDepartments;
   const savedReviews = loadSavedReviews();
   return reviewDepartments.map((item) => ({
     ...item,
@@ -472,6 +471,37 @@ function mergeById(defaultItems, incomingItems) {
   return [...mergedItems, ...extraItems];
 }
 
+function readLocalRecoveryState() {
+  try {
+    const products = JSON.parse(localStorage.getItem(productStorageKey) || "[]");
+    const savedReviews = JSON.parse(localStorage.getItem(reviewStorageKey) || "{}");
+    const reviews = Array.isArray(savedReviews)
+      ? mergeById(defaultReviewDepartments, savedReviews)
+      : defaultReviewDepartments.map((item) => ({
+          ...item,
+          text: savedReviews[item.id] ?? item.text,
+        }));
+
+    return {
+      products: Array.isArray(products) ? products : [],
+      reviews,
+    };
+  } catch (error) {
+    console.error("读取本机缓存失败", error);
+    return { products: [], reviews: defaultReviewDepartments.map((item) => ({ ...item })) };
+  }
+}
+
+function applyLocalRecoveryState(statusText) {
+  const recoveredState = readLocalRecoveryState();
+  if (!recoveredState.products.length) return false;
+  productChanges = recoveredState.products.map((item) => ({ ...item }));
+  reviewDepartments = recoveredState.reviews.map((item) => ({ ...item }));
+  storageMode = "local";
+  if (statusText) setSaveState(statusText);
+  return true;
+}
+
 async function loadSharedState() {
   const editVersionAtStart = localEditVersion;
 
@@ -497,18 +527,18 @@ async function loadSharedState() {
       : defaultProductChanges.map((item) => ({ ...item }));
     reviewDepartments = mergeById(defaultReviewDepartments, state?.reviews);
     storageMode = "shared";
+    sessionStorage.removeItem(recoveryPinnedKey);
     setSaveState(requiresDataMigration ? "正在更新热厨数据" : state ? "阿里云共享模式" : "正在初始化云端数据");
 
     if (!state || requiresDataMigration) await saveSharedState();
     return true;
   } catch (error) {
     console.error("云端同步失败", error);
-    storageMode = "local";
-    if (hasSharedSync) {
-      productChanges = [];
-      reviewDepartments = defaultReviewDepartments.map((item) => ({ ...item, text: "" }));
+    const recovered = hasSharedSync && applyLocalRecoveryState("云端连接失败，已显示本机缓存");
+    if (!recovered) {
+      storageMode = "local";
+      setSaveState(hasSharedSync ? "云端连接失败，请刷新或稍后重试" : "本地保存模式");
     }
-    setSaveState(hasSharedSync ? "云端连接失败，请刷新或稍后重试" : "本地保存模式");
     return false;
   }
 }
@@ -561,6 +591,7 @@ async function saveSharedState() {
 
 function shouldSkipCloudSync() {
   return (
+    sessionStorage.getItem(recoveryPinnedKey) === "true" ||
     queueSharedSave.pending ||
     document.activeElement?.matches("[data-review-editor], [data-product-field], [data-time-tentative]")
   );
@@ -975,27 +1006,6 @@ function resetClearAllButton() {
   clearAllButton.dataset.confirming = "";
 }
 
-function readLocalRecoveryState() {
-  try {
-    const products = JSON.parse(localStorage.getItem(productStorageKey) || "[]");
-    const savedReviews = JSON.parse(localStorage.getItem(reviewStorageKey) || "{}");
-    const reviews = Array.isArray(savedReviews)
-      ? mergeById(defaultReviewDepartments, savedReviews)
-      : defaultReviewDepartments.map((item) => ({
-          ...item,
-          text: savedReviews[item.id] ?? item.text,
-        }));
-
-    return {
-      products: Array.isArray(products) ? products : [],
-      reviews,
-    };
-  } catch (error) {
-    console.error("读取本机缓存失败", error);
-    return { products: [], reviews: defaultReviewDepartments.map((item) => ({ ...item })) };
-  }
-}
-
 function hasLocalRecoveryState() {
   return readLocalRecoveryState().products.length > 0;
 }
@@ -1024,7 +1034,10 @@ async function recoverFromLocalCache() {
     const saved = await saveSharedState();
     if (!saved) {
       storageMode = "local";
+      sessionStorage.setItem(recoveryPinnedKey, "true");
       setSaveState("已恢复本机缓存，云端仍连接失败");
+    } else {
+      sessionStorage.removeItem(recoveryPinnedKey);
     }
   } else {
     localStorage.setItem(productStorageKey, JSON.stringify(productChanges));
@@ -1143,11 +1156,7 @@ clearAllButton.addEventListener("click", requestClearAll);
 setupLocalRecovery();
 
 async function initDashboard() {
-  if (hasSharedSync) {
-    productChanges = [];
-    reviewDepartments = defaultReviewDepartments.map((item) => ({ ...item, text: "" }));
-    setSaveState("正在连接云端数据");
-  }
+  if (hasSharedSync) setSaveState("正在连接云端数据");
   renderDepartmentPanels();
   renderReviewHighlights();
   if (hasSharedSync) {

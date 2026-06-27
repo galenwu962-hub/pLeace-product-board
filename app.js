@@ -11,6 +11,7 @@ const recoveryMode = urlParams.get("recoverLocal") === "1";
 const recoveryPinnedKey = "product-change-dashboard-local-recovery-pinned-v1";
 const sharedStateRowId = "product-change-dashboard-state-v1";
 const sharedDataRevision = "2026-06-hot-drink-actual-v3";
+const sharedFallbackUrl = "./data/shared-state-fallback.json";
 
 const defaultProductChanges = [
   {
@@ -502,6 +503,43 @@ function applyLocalRecoveryState(statusText) {
   return true;
 }
 
+function applySharedState(state) {
+  const requiresDataMigration = Boolean(state && state.dataRevision !== sharedDataRevision);
+  const actualDepartments = new Set(["hot", "drink"]);
+  const incomingProducts = requiresDataMigration
+    ? [
+        ...defaultProductChanges.filter((item) => actualDepartments.has(item.department)),
+        ...(state.products || []).filter((item) => !actualDepartments.has(item.department)),
+      ]
+    : state?.products;
+
+  productChanges = state
+    ? (incomingProducts || []).map((item) => ({ ...item }))
+    : defaultProductChanges.map((item) => ({ ...item }));
+  reviewDepartments = mergeById(defaultReviewDepartments, state?.reviews);
+  return requiresDataMigration;
+}
+
+async function loadFallbackState() {
+  const response = await fetch(sharedFallbackUrl, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Fallback HTTP ${response.status}`);
+  const state = await response.json();
+  applySharedState(state);
+  storageMode = "local";
+  setSaveState("云端连接失败，已加载兜底数据");
+  return true;
+}
+
+async function fetchSharedState(sharedApiUrl) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 4200);
+  try {
+    return await fetch(sharedApiUrl, { cache: "no-store", signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 async function loadSharedState() {
   const editVersionAtStart = localEditVersion;
 
@@ -509,23 +547,11 @@ async function loadSharedState() {
     const { sharedApiUrl } = runtimeConfig;
     if (!sharedApiUrl) throw new Error("缺少阿里云共享接口配置");
 
-    const response = await fetch(sharedApiUrl, { cache: "no-store" });
+    const response = await fetchSharedState(sharedApiUrl);
     if (!response.ok && response.status !== 404) throw new Error(`HTTP ${response.status}`);
     const state = response.status === 404 ? null : await response.json();
     if (storageMode === "shared" && editVersionAtStart !== localEditVersion) return false;
-    const requiresDataMigration = Boolean(state && state.dataRevision !== sharedDataRevision);
-    const actualDepartments = new Set(["hot", "drink"]);
-    const incomingProducts = requiresDataMigration
-      ? [
-          ...defaultProductChanges.filter((item) => actualDepartments.has(item.department)),
-          ...(state.products || []).filter((item) => !actualDepartments.has(item.department)),
-        ]
-      : state?.products;
-
-    productChanges = state
-      ? (incomingProducts || []).map((item) => ({ ...item }))
-      : defaultProductChanges.map((item) => ({ ...item }));
-    reviewDepartments = mergeById(defaultReviewDepartments, state?.reviews);
+    const requiresDataMigration = applySharedState(state);
     storageMode = "shared";
     sessionStorage.removeItem(recoveryPinnedKey);
     setSaveState(requiresDataMigration ? "正在更新热厨数据" : state ? "阿里云共享模式" : "正在初始化云端数据");
@@ -535,6 +561,13 @@ async function loadSharedState() {
   } catch (error) {
     console.error("云端同步失败", error);
     const recovered = hasSharedSync && applyLocalRecoveryState("云端连接失败，已显示本机缓存");
+    if (!recovered && hasSharedSync) {
+      try {
+        return await loadFallbackState();
+      } catch (fallbackError) {
+        console.error("兜底数据加载失败", fallbackError);
+      }
+    }
     if (!recovered) {
       storageMode = "local";
       setSaveState(hasSharedSync ? "云端连接失败，请刷新或稍后重试" : "本地保存模式");
@@ -1176,7 +1209,11 @@ clearAllButton.addEventListener("click", requestClearAll);
 setupLocalRecovery();
 
 async function initDashboard() {
-  if (hasSharedSync) setSaveState("正在连接云端数据");
+  if (hasSharedSync) {
+    productChanges = [];
+    reviewDepartments = defaultReviewDepartments.map((item) => ({ ...item, text: "" }));
+    setSaveState("正在连接云端数据");
+  }
   renderDepartmentPanels();
   renderReviewHighlights();
   if (await publishLocalCacheToCloud()) return;

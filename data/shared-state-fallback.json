@@ -1,0 +1,154 @@
+{
+  "products": [
+    {
+      "id": "hot-optimize-20260628-steak",
+      "department": "hot",
+      "type": "launch",
+      "name": "牛腩排/照烧鸡扒",
+      "time": "2026-06-22",
+      "reviewer": "OEM/万菱汇、龙岗店",
+      "opinion": "第三次大货生产（扩产）\n采购：目前工厂端管控有效，可以上架\n运营：在大货品质可控的前提下，同意上架",
+      "followUp": true
+    },
+    {
+      "id": "drink-launch-20260630-jasmine-mango-kombucha",
+      "department": "drink",
+      "type": "launch",
+      "name": "茉莉青芒康普茶/配餐神器",
+      "time": "2026-06-30",
+      "reviewer": "全门店",
+      "opinion": "提升水吧tc\n采购：无意见\n运营同意",
+      "followUp": true
+    },
+    {
+      "id": "drink-optimize-20260630-mung-bean-sparkling-water",
+      "department": "drink",
+      "type": "optimize",
+      "name": "绿豆汽泡水/配餐神器",
+      "time": "2026-06-30",
+      "reviewer": "全门店",
+      "opinion": "提升水吧tc 运营同意\n采购：现有物料可满足",
+      "followUp": true
+    },
+    {
+      "id": "bake-launch-1",
+      "department": "bake",
+      "type": "launch",
+      "name": "红豆碱水贝果",
+      "time": "2026-06-23",
+      "reviewer": "全门店（除龙岗、ccp、华东门店）",
+      "opinion": "月月上新计划\n采购：现有物料可满足",
+      "followUp": true
+    },
+    {
+      "id": "bake-launch-1781428016470-b61g0u",
+      "department": "bake",
+      "type": "launch",
+      "name": "红豆沙碱水贝果",
+      "time": "2026-06-23",
+      "reviewer": "研发 / 市场 / 营运 / 厨政 / 采购",
+      "opinion": "已完成培训",
+      "followUp": true
+    },
+    {
+      "id": "hot-launch-1782094118354-0ols32",
+      "department": "hot",
+      "type": "retire",
+      "name": "榛子巧克力pizza",
+      "time": "2026-06-29",
+      "reviewer": "CCP店",
+      "opinion": "销售量极低",
+      "followUp": true
+    },
+    {
+      "id": "hot-launch-1782094119469-bxbxte",
+      "department": "hot",
+      "type": "optimize",
+      "name": "黑松露薯条",
+      "time": "2026-06-22",
+      "reviewer": "全门店",
+      "opinion": "与南京、杭州同步",
+      "followUp": true
+    },
+    {
+      "id": "hot-launch-1782094410234-1rtdyc",
+      "department": "hot",
+      "type": "retire",
+      "name": "火山千层牛肉饭—鹅肝加选",
+      "time": "2026-06-22",
+      "reviewer": "万菱汇店",
+      "opinion": "销量极低",
+      "followUp": true
+    },
+    {
+      "id": "hot-launch-1782094607499-rbz3ru",
+      "department": "hot",
+      "type": "retire",
+      "name": "碳烤牛小排",
+      "time": "2026-06-29",
+      "reviewer": "创意园总部",
+      "opinion": "销量极低，报损量很高",
+      "followUp": true
+    },
+    {
+      "id": "hot-launch-1782295639376-nnv0kr",
+      "department": "hot",
+      "type": "launch",
+      "name": "酸汤牛肉烩饭",
+      "time": "2026-06-29",
+      "reviewer": "总部店",
+      "opinion": "请填写本菜品的会审意见和执行要求。",
+      "followUp": true
+    },
+    {
+      "id": "hot-retire-1782295852508-fw64qg",
+      "department": "hot",
+      "type": "retire",
+      "name": "牛扒配菜：鹅肝",
+      "time": "待定",
+      "reviewer": "研发 / 市场 / 营运 / 厨政 / 采购",
+      "opinion": "采购待确认：鹅肝库存",
+      "followUp": true
+    }
+  ],
+  "reviews": [
+    {
+      "id": "research",
+      "title": "研发",
+      "text": "",
+      "status": "标准待补齐",
+      "tone": "warning"
+    },
+    {
+      "id": "marketing",
+      "title": "市场",
+      "text": "菜单命名、图片风格与宣传话术需保持一致；新品主推标签建议同步到门店物料。",
+      "status": "物料待复核",
+      "tone": "warning"
+    },
+    {
+      "id": "operation",
+      "title": "营运",
+      "text": "",
+      "status": "按计划推进",
+      "tone": "approved"
+    },
+    {
+      "id": "chef",
+      "title": "厨政",
+      "text": "",
+      "status": "SOP 待确认",
+      "tone": "warning"
+    },
+    {
+      "id": "procurement",
+      "title": "采购",
+      "text": "",
+      "status": "通过",
+      "tone": "approved"
+    }
+  ],
+  "dataRevision": "2026-06-hot-drink-actual-v3",
+  "updatedAt": "2026-06-27T01:40:11.087Z",
+  "source": "chrome-local-cache-fallback"
+}

@@ -6,6 +6,8 @@ const departments = [
 
 const runtimeConfig = window.DEJI_CONFIG || {};
 const hasSharedSync = Boolean(runtimeConfig.sharedApiUrl);
+const urlParams = new URLSearchParams(window.location.search);
+const recoveryMode = urlParams.get("recoverLocal") === "1";
 const sharedStateRowId = "product-change-dashboard-state-v1";
 const sharedDataRevision = "2026-06-hot-drink-actual-v3";
 
@@ -175,6 +177,7 @@ const typeFilter = document.querySelector("#typeFilter");
 const exportImageButton = document.querySelector("#exportImageButton");
 const exportMarkdownButton = document.querySelector("#exportMarkdownButton");
 const clearAllButton = document.querySelector("#clearAllButton");
+const exportActions = document.querySelector(".export-actions");
 const saveState = document.querySelector("#saveState");
 
 function formatDateTime(value) {
@@ -534,7 +537,7 @@ function queueSharedSave() {
 }
 
 async function saveSharedState() {
-  if (storageMode !== "shared") return;
+  if (storageMode !== "shared") return false;
 
   try {
     const { sharedApiUrl } = runtimeConfig;
@@ -548,9 +551,11 @@ async function saveSharedState() {
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     setSaveState("已同步到云端");
+    return true;
   } catch (error) {
     console.error(error);
     setSaveState("云端同步失败");
+    return false;
   }
 }
 
@@ -970,6 +975,81 @@ function resetClearAllButton() {
   clearAllButton.dataset.confirming = "";
 }
 
+function readLocalRecoveryState() {
+  try {
+    const products = JSON.parse(localStorage.getItem(productStorageKey) || "[]");
+    const savedReviews = JSON.parse(localStorage.getItem(reviewStorageKey) || "{}");
+    const reviews = Array.isArray(savedReviews)
+      ? mergeById(defaultReviewDepartments, savedReviews)
+      : defaultReviewDepartments.map((item) => ({
+          ...item,
+          text: savedReviews[item.id] ?? item.text,
+        }));
+
+    return {
+      products: Array.isArray(products) ? products : [],
+      reviews,
+    };
+  } catch (error) {
+    console.error("读取本机缓存失败", error);
+    return { products: [], reviews: defaultReviewDepartments.map((item) => ({ ...item })) };
+  }
+}
+
+function hasLocalRecoveryState() {
+  return readLocalRecoveryState().products.length > 0;
+}
+
+async function recoverFromLocalCache() {
+  const recoveryButton = document.querySelector("#localRecoveryButton");
+  const recoveredState = readLocalRecoveryState();
+  if (!recoveredState.products.length) {
+    setSaveState("本机没有可恢复内容");
+    return;
+  }
+
+  if (recoveryButton) {
+    recoveryButton.disabled = true;
+    recoveryButton.textContent = "正在恢复";
+  }
+
+  productChanges = recoveredState.products.map((item) => ({ ...item }));
+  reviewDepartments = recoveredState.reviews.map((item) => ({ ...item }));
+  storageMode = hasSharedSync ? "shared" : "local";
+  setActiveType("all");
+  renderDepartmentPanels();
+  renderReviewHighlights();
+
+  if (hasSharedSync) {
+    const saved = await saveSharedState();
+    if (!saved) {
+      storageMode = "local";
+      setSaveState("已恢复本机缓存，云端仍连接失败");
+    }
+  } else {
+    localStorage.setItem(productStorageKey, JSON.stringify(productChanges));
+    localStorage.setItem(reviewStorageKey, JSON.stringify(Object.fromEntries(reviewDepartments.map((item) => [item.id, item.text]))));
+    setSaveState("已恢复本机缓存");
+  }
+
+  if (recoveryButton) {
+    recoveryButton.disabled = false;
+    recoveryButton.textContent = "恢复本机缓存";
+  }
+}
+
+function setupLocalRecovery() {
+  if (!recoveryMode || !exportActions) return;
+  const recoveryButton = document.createElement("button");
+  recoveryButton.className = "export-button export-button-secondary";
+  recoveryButton.id = "localRecoveryButton";
+  recoveryButton.type = "button";
+  recoveryButton.textContent = "恢复本机缓存";
+  recoveryButton.disabled = !hasLocalRecoveryState();
+  recoveryButton.addEventListener("click", recoverFromLocalCache);
+  exportActions.prepend(recoveryButton);
+}
+
 function clearAllContent() {
   productChanges = [];
   reviewDepartments = reviewDepartments.map((item) => ({ ...item, text: "" }));
@@ -1060,6 +1140,7 @@ departmentGrid.addEventListener("click", (event) => {
 exportImageButton.addEventListener("click", exportDashboardImage);
 exportMarkdownButton.addEventListener("click", exportDashboardMarkdown);
 clearAllButton.addEventListener("click", requestClearAll);
+setupLocalRecovery();
 
 async function initDashboard() {
   if (hasSharedSync) {

@@ -205,8 +205,12 @@ function getDefaultTimeValue() {
   return offsetDate.toISOString().slice(0, 10);
 }
 
+function usesInMemoryState() {
+  return storageMode === "shared" || storageMode === "fallback" || (hasSharedSync && !recoveryMode);
+}
+
 function loadSavedProducts() {
-  if (storageMode === "shared") return {};
+  if (usesInMemoryState()) return {};
   try {
     return JSON.parse(localStorage.getItem(productStorageKey)) || {};
   } catch {
@@ -215,7 +219,7 @@ function loadSavedProducts() {
 }
 
 function getCurrentProductChanges() {
-  if (storageMode === "shared") return productChanges;
+  if (usesInMemoryState()) return productChanges;
   const savedProducts = loadSavedProducts();
   if (Array.isArray(savedProducts)) return savedProducts;
   return productChanges.map((item) => ({
@@ -377,7 +381,7 @@ function renderReviewHighlights() {
 }
 
 function loadSavedReviews() {
-  if (storageMode === "shared") return {};
+  if (usesInMemoryState()) return {};
   try {
     return JSON.parse(localStorage.getItem(reviewStorageKey)) || {};
   } catch {
@@ -386,7 +390,7 @@ function loadSavedReviews() {
 }
 
 function getCurrentReviews() {
-  if (storageMode === "shared") return reviewDepartments;
+  if (usesInMemoryState()) return reviewDepartments;
   const savedReviews = loadSavedReviews();
   return reviewDepartments.map((item) => ({
     ...item,
@@ -404,13 +408,18 @@ function saveReviewDrafts() {
     nextReviews[editor.dataset.reviewEditor] = editor.value.trim();
   });
 
-  if (storageMode === "shared") {
+  if (storageMode === "shared" || storageMode === "fallback") {
     reviewDepartments = reviewDepartments.map((item) => ({
       ...item,
       text: nextReviews[item.id] ?? item.text,
     }));
-    queueSharedSave();
-    setSaveState("正在同步");
+    if (storageMode === "shared") {
+      queueSharedSave();
+      setSaveState("正在同步");
+    } else {
+      localStorage.setItem(reviewStorageKey, JSON.stringify(nextReviews));
+      setSaveState("已保存到本机");
+    }
   } else {
     localStorage.setItem(reviewStorageKey, JSON.stringify(nextReviews));
     setSaveState("已保存");
@@ -525,7 +534,7 @@ async function loadFallbackState() {
   if (!response.ok) throw new Error(`Fallback HTTP ${response.status}`);
   const state = await response.json();
   applySharedState(state);
-  storageMode = "local";
+  storageMode = "fallback";
   setSaveState("云端连接失败，已加载兜底数据");
   return true;
 }
@@ -560,7 +569,7 @@ async function loadSharedState() {
     return true;
   } catch (error) {
     console.error("云端同步失败", error);
-    const recovered = hasSharedSync && applyLocalRecoveryState("云端连接失败，已显示本机缓存");
+    const recovered = recoveryMode && hasSharedSync && applyLocalRecoveryState("云端连接失败，已显示本机缓存");
     if (!recovered && hasSharedSync) {
       try {
         return await loadFallbackState();
@@ -1212,6 +1221,7 @@ async function initDashboard() {
   if (hasSharedSync) {
     productChanges = [];
     reviewDepartments = defaultReviewDepartments.map((item) => ({ ...item, text: "" }));
+    if (!recoveryMode) storageMode = "fallback";
     setSaveState("正在连接云端数据");
   }
   renderDepartmentPanels();

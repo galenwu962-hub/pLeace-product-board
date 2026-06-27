@@ -142,6 +142,7 @@ let localEditVersion = 0;
 let explicitClearAt = null;
 const reviewStorageKey = "product-change-dashboard-review-opinions-v1";
 const productStorageKey = "product-change-dashboard-product-changes-v3";
+const clearIntentStorageKey = "product-change-dashboard-clear-intent-v1";
 
 const typeText = {
   launch: "上架",
@@ -250,7 +251,10 @@ function collectRenderedProductChanges() {
 
 function persistProductChanges(nextProducts, statusText = "已保存") {
   productChanges = nextProducts;
-  if (productChanges.length) explicitClearAt = null;
+  if (productChanges.length) {
+    explicitClearAt = null;
+    localStorage.removeItem(clearIntentStorageKey);
+  }
 
   if (storageMode === "shared") {
     queueSharedSave();
@@ -529,7 +533,20 @@ function applySharedState(state) {
     : defaultProductChanges.map((item) => ({ ...item }));
   reviewDepartments = mergeById(defaultReviewDepartments, state?.reviews);
   explicitClearAt = state?.emptyIntent ? state.clearedAt || new Date().toISOString() : null;
+  if (explicitClearAt) localStorage.setItem(clearIntentStorageKey, explicitClearAt);
+  else localStorage.removeItem(clearIntentStorageKey);
   return requiresDataMigration;
+}
+
+function applyPendingClearIntent() {
+  const pendingClearAt = localStorage.getItem(clearIntentStorageKey);
+  if (!pendingClearAt) return false;
+  productChanges = [];
+  reviewDepartments = defaultReviewDepartments.map((item) => ({ ...item, text: "" }));
+  explicitClearAt = pendingClearAt;
+  storageMode = hasSharedSync ? "shared" : "local";
+  setSaveState(hasSharedSync ? "清空已保留，等待云端同步" : "已清空");
+  return true;
 }
 
 async function loadFallbackState() {
@@ -568,6 +585,11 @@ async function loadSharedState() {
   try {
     const { sharedApiUrl } = runtimeConfig;
     if (!sharedApiUrl) throw new Error("缺少阿里云共享接口配置");
+    if (storageMode === "shared" && explicitClearAt && productChanges.length === 0) {
+      const saved = await saveSharedState();
+      if (saved) localStorage.removeItem(clearIntentStorageKey);
+      return true;
+    }
 
     const response = await fetchSharedState(sharedApiUrl);
     if (!response.ok && response.status !== 404) throw new Error(`HTTP ${response.status}`);
@@ -589,6 +611,11 @@ async function loadSharedState() {
     return true;
   } catch (error) {
     console.error("云端同步失败", error);
+    if (explicitClearAt && productChanges.length === 0) {
+      storageMode = "shared";
+      setSaveState("清空已保留，等待云端同步");
+      return false;
+    }
     const recovered = recoveryMode && hasSharedSync && applyLocalRecoveryState("云端连接失败，已显示本机缓存");
     if (!recovered && hasSharedSync) {
       try {
@@ -1152,6 +1179,7 @@ function clearAllContent() {
   productChanges = [];
   reviewDepartments = reviewDepartments.map((item) => ({ ...item, text: "" }));
   explicitClearAt = new Date().toISOString();
+  localStorage.setItem(clearIntentStorageKey, explicitClearAt);
 
   if (hasSharedSync) {
     storageMode = "shared";
@@ -1243,7 +1271,8 @@ clearAllButton.addEventListener("click", requestClearAll);
 setupLocalRecovery();
 
 async function initDashboard() {
-  if (hasSharedSync && !recoveryMode) {
+  const hasPendingClear = applyPendingClearIntent();
+  if (hasSharedSync && !recoveryMode && !hasPendingClear) {
     try {
       await loadFallbackState();
     } catch (error) {
@@ -1253,7 +1282,7 @@ async function initDashboard() {
       storageMode = "fallback";
       setSaveState("兜底数据加载失败");
     }
-  } else if (hasSharedSync) {
+  } else if (hasSharedSync && !hasPendingClear) {
     setSaveState("正在连接云端数据");
   }
 

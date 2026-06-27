@@ -171,8 +171,9 @@ const brandColors = {
 const departmentGrid = document.querySelector("#departmentGrid");
 const reviewGrid = document.querySelector("#reviewGrid");
 const typeFilter = document.querySelector("#typeFilter");
-const exportPdfButton = document.querySelector("#exportPdfButton");
+const exportImageButton = document.querySelector("#exportImageButton");
 const exportMarkdownButton = document.querySelector("#exportMarkdownButton");
+const clearAllButton = document.querySelector("#clearAllButton");
 const saveState = document.querySelector("#saveState");
 
 function formatDateTime(value) {
@@ -872,6 +873,10 @@ function buildDashboardMarkdown() {
 
 function downloadTextFile(filename, content, type = "text/plain;charset=utf-8") {
   const blob = new Blob([content], { type });
+  downloadBlob(filename, blob);
+}
+
+function downloadBlob(filename, blob) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -890,11 +895,20 @@ function exportDashboardMarkdown() {
   setSaveState("MD 已生成");
 }
 
-async function exportDashboardPdf() {
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error("图片生成失败"));
+    }, type, quality);
+  });
+}
+
+async function exportDashboardImage() {
   saveProductDrafts();
   saveReviewDrafts();
-  exportPdfButton.disabled = true;
-  exportPdfButton.textContent = "正在生成";
+  exportImageButton.disabled = true;
+  exportImageButton.textContent = "正在生成";
   document.querySelector(".dashboard-shell").classList.add("is-exporting");
 
   try {
@@ -912,25 +926,57 @@ async function exportDashboardPdf() {
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
     URL.revokeObjectURL(svgUrl);
 
-    const pdfBlob = createPdfBlob(canvas.toDataURL("image/jpeg", 0.92), canvas.width, canvas.height);
-    const pdfUrl = URL.createObjectURL(pdfBlob);
-    const link = document.createElement("a");
-    link.href = pdfUrl;
-    link.download = `产品调整会审仪表盘-${new Date().toISOString().slice(0, 10)}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
-    setSaveState("PDF 已生成");
+    const imageBlob = await canvasToBlob(canvas, "image/png");
+    downloadBlob(`产品调整会审仪表盘-${new Date().toISOString().slice(0, 10)}.png`, imageBlob);
+    setSaveState("图片已生成");
   } catch (error) {
     console.error(error);
-    window.print();
-    setSaveState("已打开打印");
+    setSaveState("图片生成失败");
   } finally {
     document.querySelector(".dashboard-shell").classList.remove("is-exporting");
-    exportPdfButton.disabled = false;
-    exportPdfButton.textContent = "导出 PDF";
+    exportImageButton.disabled = false;
+    exportImageButton.textContent = "保存图片";
   }
+}
+
+function resetClearAllButton() {
+  clearAllButton.classList.remove("is-confirming");
+  clearAllButton.textContent = "清空全部";
+  clearAllButton.dataset.confirming = "";
+}
+
+function clearAllContent() {
+  productChanges = [];
+  reviewDepartments = reviewDepartments.map((item) => ({ ...item, text: "" }));
+
+  if (storageMode === "shared") {
+    queueSharedSave();
+    setSaveState("正在同步清空");
+  } else {
+    localStorage.setItem(productStorageKey, JSON.stringify(productChanges));
+    localStorage.setItem(reviewStorageKey, JSON.stringify(Object.fromEntries(reviewDepartments.map((item) => [item.id, ""]))));
+    setSaveState("已清空");
+  }
+
+  setActiveType("all");
+  renderDepartmentPanels();
+  renderReviewHighlights();
+}
+
+function requestClearAll() {
+  if (clearAllButton.dataset.confirming === "true") {
+    window.clearTimeout(requestClearAll.timer);
+    clearAllContent();
+    resetClearAllButton();
+    return;
+  }
+
+  clearAllButton.dataset.confirming = "true";
+  clearAllButton.classList.add("is-confirming");
+  clearAllButton.textContent = "再次点击确认清空";
+  setSaveState("再次点击确认清空");
+  window.clearTimeout(requestClearAll.timer);
+  requestClearAll.timer = window.setTimeout(resetClearAllButton, 5000);
 }
 
 typeFilter.addEventListener("change", (event) => {
@@ -986,8 +1032,9 @@ departmentGrid.addEventListener("click", (event) => {
   }
 });
 
-exportPdfButton.addEventListener("click", exportDashboardPdf);
+exportImageButton.addEventListener("click", exportDashboardImage);
 exportMarkdownButton.addEventListener("click", exportDashboardMarkdown);
+clearAllButton.addEventListener("click", requestClearAll);
 
 async function initDashboard() {
   renderDepartmentPanels();

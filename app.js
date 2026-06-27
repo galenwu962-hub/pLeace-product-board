@@ -5,6 +5,7 @@ const departments = [
 ];
 
 const runtimeConfig = window.DEJI_CONFIG || {};
+const hasSharedSync = Boolean(runtimeConfig.sharedApiUrl);
 const sharedStateRowId = "product-change-dashboard-state-v1";
 const sharedDataRevision = "2026-06-hot-drink-actual-v3";
 
@@ -200,7 +201,7 @@ function getDefaultTimeValue() {
 }
 
 function loadSavedProducts() {
-  if (storageMode === "shared") return {};
+  if (storageMode === "shared" || hasSharedSync) return {};
   try {
     return JSON.parse(localStorage.getItem(productStorageKey)) || {};
   } catch {
@@ -210,6 +211,7 @@ function loadSavedProducts() {
 
 function getCurrentProductChanges() {
   if (storageMode === "shared") return productChanges;
+  if (hasSharedSync) return productChanges;
   const savedProducts = loadSavedProducts();
   if (Array.isArray(savedProducts)) return savedProducts;
   return productChanges.map((item) => ({
@@ -371,7 +373,7 @@ function renderReviewHighlights() {
 }
 
 function loadSavedReviews() {
-  if (storageMode === "shared") return {};
+  if (storageMode === "shared" || hasSharedSync) return {};
   try {
     return JSON.parse(localStorage.getItem(reviewStorageKey)) || {};
   } catch {
@@ -381,6 +383,7 @@ function loadSavedReviews() {
 
 function getCurrentReviews() {
   if (storageMode === "shared") return reviewDepartments;
+  if (hasSharedSync) return reviewDepartments;
   const savedReviews = loadSavedReviews();
   return reviewDepartments.map((item) => ({
     ...item,
@@ -446,7 +449,7 @@ function deleteProductChange(productId) {
 
 function getIdleSaveStateText() {
   if (storageMode === "shared") return "线上共享，内容自动同步";
-  if (runtimeConfig.sharedApiUrl) return "本地缓存，正在重试云端同步";
+  if (hasSharedSync) return "云端连接失败，等待重新同步";
   return "内容自动保存";
 }
 
@@ -495,9 +498,14 @@ async function loadSharedState() {
 
     if (!state || requiresDataMigration) await saveSharedState();
     return true;
-  } catch {
+  } catch (error) {
+    console.error("云端同步失败", error);
     storageMode = "local";
-    setSaveState(runtimeConfig.sharedApiUrl ? "云端连接失败，使用本地缓存" : "本地保存模式");
+    if (hasSharedSync) {
+      productChanges = [];
+      reviewDepartments = defaultReviewDepartments.map((item) => ({ ...item, text: "" }));
+    }
+    setSaveState(hasSharedSync ? "云端连接失败，请刷新或稍后重试" : "本地保存模式");
     return false;
   }
 }
@@ -554,9 +562,13 @@ function shouldSkipCloudSync() {
 }
 
 async function syncFromCloud() {
-  if (!runtimeConfig.sharedApiUrl || shouldSkipCloudSync()) return;
+  if (!hasSharedSync || shouldSkipCloudSync()) return;
   const stateApplied = await loadSharedState();
-  if (!stateApplied) return;
+  if (!stateApplied && storageMode === "local") {
+    renderDepartmentPanels();
+    renderReviewHighlights();
+    return;
+  }
   renderDepartmentPanels();
   renderReviewHighlights();
 }
@@ -1050,14 +1062,16 @@ exportMarkdownButton.addEventListener("click", exportDashboardMarkdown);
 clearAllButton.addEventListener("click", requestClearAll);
 
 async function initDashboard() {
+  if (hasSharedSync) {
+    productChanges = [];
+    reviewDepartments = defaultReviewDepartments.map((item) => ({ ...item, text: "" }));
+    setSaveState("正在连接云端数据");
+  }
   renderDepartmentPanels();
   renderReviewHighlights();
-  loadSharedState()
-    .then(() => {
-      renderDepartmentPanels();
-      renderReviewHighlights();
-    })
-    .catch((error) => console.error("初始化云端数据失败", error));
+  if (hasSharedSync) {
+    syncFromCloud().catch((error) => console.error("初始化云端数据失败", error));
+  }
 
   window.setInterval(() => {
     syncFromCloud().catch((error) => console.error("自动同步失败", error));

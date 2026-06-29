@@ -558,7 +558,7 @@ function getSharedPayload(options = {}) {
     clearedAt: explicitClearAt || undefined,
     baseClearedAt: lastKnownClearedAt || undefined,
     restoreIntent: Boolean(options.restoreIntent || isRestoringAfterClear),
-    clientRevision: "always-cloud-save-v1",
+    clientRevision: "reliable-save-queue-v1",
     updatedAt: new Date().toISOString(),
   };
 }
@@ -566,16 +566,26 @@ function getSharedPayload(options = {}) {
 function queueSharedSave() {
   if (!hasSharedSync || sessionStorage.getItem(recoveryPinnedKey) === "true") return;
   storageMode = "shared";
+  queueSharedSave.dirty = true;
   window.clearTimeout(queueSharedSave.timer);
+  queueSharedSave.timer = window.setTimeout(runSharedSaveQueue, 520);
+}
+
+async function runSharedSaveQueue() {
+  if (queueSharedSave.inFlight) return;
+  window.clearTimeout(queueSharedSave.timer);
+  queueSharedSave.timer = null;
   queueSharedSave.pending = true;
-  queueSharedSave.timer = window.setTimeout(async () => {
-    try {
-      await saveSharedState();
-    } finally {
-      queueSharedSave.pending = false;
-      queueSharedSave.timer = null;
-    }
-  }, 520);
+
+  while (queueSharedSave.dirty) {
+    queueSharedSave.dirty = false;
+    queueSharedSave.inFlight = true;
+    const saved = await saveSharedState();
+    queueSharedSave.inFlight = false;
+    if (!saved && !queueSharedSave.dirty) break;
+  }
+
+  queueSharedSave.pending = false;
 }
 
 async function saveSharedState(options = {}) {

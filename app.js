@@ -175,7 +175,8 @@ function persistProductChanges(nextProducts, statusText = "已保存") {
     explicitClearAt = null;
   }
 
-  if (storageMode === "shared") {
+  if (hasSharedSync && sessionStorage.getItem(recoveryPinnedKey) !== "true") {
+    storageMode = "shared";
     queueSharedSave();
     setSaveState(statusText === "已保存" ? "正在同步" : statusText);
   } else {
@@ -333,12 +334,13 @@ function saveReviewDrafts() {
     nextReviews[editor.dataset.reviewEditor] = editor.value.trim();
   });
 
-  if (storageMode === "shared" || storageMode === "fallback") {
+  if (storageMode === "shared" || storageMode === "fallback" || hasSharedSync) {
     reviewDepartments = reviewDepartments.map((item) => ({
       ...item,
       text: nextReviews[item.id] ?? item.text,
     }));
-    if (storageMode === "shared") {
+    if (hasSharedSync && sessionStorage.getItem(recoveryPinnedKey) !== "true") {
+      storageMode = "shared";
       queueSharedSave();
       setSaveState("正在同步");
     } else {
@@ -440,7 +442,7 @@ function applyLocalRecoveryState(statusText) {
 function applySharedState(state) {
   const requiresDataMigration = Boolean(state && state.dataRevision !== sharedDataRevision);
   const incomingProducts = requiresDataMigration ? [] : state?.products;
-  const incomingReviews = requiresDataMigration
+  const incomingReviews = requiresDataMigration || state?.emptyIntent
     ? defaultReviewDepartments.map((item) => ({ ...item, text: "" }))
     : state?.reviews;
   const resetClearAt = requiresDataMigration ? new Date().toISOString() : null;
@@ -556,13 +558,14 @@ function getSharedPayload(options = {}) {
     clearedAt: explicitClearAt || undefined,
     baseClearedAt: lastKnownClearedAt || undefined,
     restoreIntent: Boolean(options.restoreIntent || isRestoringAfterClear),
-    clientRevision: "restore-after-clear-v1",
+    clientRevision: "always-cloud-save-v1",
     updatedAt: new Date().toISOString(),
   };
 }
 
 function queueSharedSave() {
-  if (storageMode !== "shared") return;
+  if (!hasSharedSync || sessionStorage.getItem(recoveryPinnedKey) === "true") return;
+  storageMode = "shared";
   window.clearTimeout(queueSharedSave.timer);
   queueSharedSave.pending = true;
   queueSharedSave.timer = window.setTimeout(async () => {
@@ -576,7 +579,8 @@ function queueSharedSave() {
 }
 
 async function saveSharedState(options = {}) {
-  if (storageMode !== "shared") return false;
+  if (!hasSharedSync || sessionStorage.getItem(recoveryPinnedKey) === "true") return false;
+  storageMode = "shared";
 
   try {
     const { sharedApiUrl } = runtimeConfig;

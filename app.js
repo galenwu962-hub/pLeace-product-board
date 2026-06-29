@@ -63,6 +63,7 @@ let lastKnownClearedAt = null;
 const reviewStorageKey = "product-change-dashboard-review-opinions-v1";
 const productStorageKey = "product-change-dashboard-product-changes-v3";
 const clearIntentStorageKey = "product-change-dashboard-clear-intent-v1";
+const sharedMirrorStorageKey = "product-change-dashboard-shared-mirror-v1";
 
 const typeText = {
   launch: "上架",
@@ -441,6 +442,32 @@ function applyLocalRecoveryState(statusText) {
   return true;
 }
 
+function getStateTime(state) {
+  const time = Date.parse(state?.updatedAt || "");
+  return Number.isFinite(time) ? time : 0;
+}
+
+function readSharedMirrorState() {
+  try {
+    const state = JSON.parse(localStorage.getItem(sharedMirrorStorageKey) || "null");
+    return state && state.dataRevision === sharedDataRevision ? state : null;
+  } catch {
+    return null;
+  }
+}
+
+function rememberSharedState(state) {
+  if (!state || state.dataRevision !== sharedDataRevision) return;
+  localStorage.setItem(sharedMirrorStorageKey, JSON.stringify(state));
+}
+
+function preferFreshSharedState(state) {
+  const mirrorState = readSharedMirrorState();
+  if (!mirrorState) return state;
+  if (!state || getStateTime(mirrorState) > getStateTime(state)) return mirrorState;
+  return state;
+}
+
 function applySharedState(state) {
   const requiresDataMigration = Boolean(state && state.dataRevision !== sharedDataRevision);
   const incomingProducts = requiresDataMigration ? [] : state?.products;
@@ -512,7 +539,7 @@ async function loadSharedState() {
 
     const response = await fetchSharedState(sharedApiUrl);
     if (!response.ok && response.status !== 404) throw new Error(`HTTP ${response.status}`);
-    const state = response.status === 404 ? null : await response.json();
+    const state = preferFreshSharedState(response.status === 404 ? null : await response.json());
     if (shouldKeepCurrentFallbackState(state)) {
       storageMode = "shared";
       setSaveState("云端为空，正在恢复兜底数据");
@@ -526,6 +553,7 @@ async function loadSharedState() {
     sessionStorage.removeItem(recoveryPinnedKey);
     setSaveState(requiresDataMigration ? "正在清理旧云端数据" : state ? "线上共享模式" : "正在初始化云端数据");
 
+    if (state) rememberSharedState(state);
     if (!state || requiresDataMigration) await saveSharedState();
     return true;
   } catch (error) {
@@ -599,12 +627,13 @@ async function saveSharedState(options = {}) {
   try {
     const { sharedApiUrl } = runtimeConfig;
     if (!sharedApiUrl) throw new Error("缺少阿里云共享接口配置");
+    const payload = getSharedPayload(options);
     const response = await fetch(sharedApiUrl, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(getSharedPayload(options)),
+      body: JSON.stringify(payload),
     });
     if (response.status === 409) {
       const conflict = await response.json().catch(() => ({}));
@@ -619,6 +648,7 @@ async function saveSharedState(options = {}) {
           body: JSON.stringify(getSharedPayload({ restoreIntent: true })),
         });
         if (retryResponse.ok) {
+          rememberSharedState(getSharedPayload({ restoreIntent: true }));
           lastKnownClearedAt = null;
           localStorage.removeItem(clearIntentStorageKey);
           setSaveState("已同步到云端");
@@ -629,6 +659,7 @@ async function saveSharedState(options = {}) {
       return false;
     }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    rememberSharedState(payload);
     if (getCurrentProductChanges().length > 0) {
       lastKnownClearedAt = null;
       localStorage.removeItem(clearIntentStorageKey);

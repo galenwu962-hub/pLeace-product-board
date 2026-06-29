@@ -140,6 +140,7 @@ let reviewDepartments = defaultReviewDepartments.map((item) => ({ ...item }));
 let storageMode = "local";
 let localEditVersion = 0;
 let explicitClearAt = null;
+let lastKnownClearedAt = null;
 const reviewStorageKey = "product-change-dashboard-review-opinions-v1";
 const productStorageKey = "product-change-dashboard-product-changes-v3";
 const clearIntentStorageKey = "product-change-dashboard-clear-intent-v1";
@@ -533,6 +534,7 @@ function applySharedState(state) {
     : defaultProductChanges.map((item) => ({ ...item }));
   reviewDepartments = mergeById(defaultReviewDepartments, state?.reviews);
   explicitClearAt = state?.emptyIntent ? state.clearedAt || new Date().toISOString() : null;
+  lastKnownClearedAt = explicitClearAt || state?.clearedAt || lastKnownClearedAt;
   if (explicitClearAt) localStorage.setItem(clearIntentStorageKey, explicitClearAt);
   else localStorage.removeItem(clearIntentStorageKey);
   return requiresDataMigration;
@@ -544,6 +546,7 @@ function applyPendingClearIntent() {
   productChanges = [];
   reviewDepartments = defaultReviewDepartments.map((item) => ({ ...item, text: "" }));
   explicitClearAt = pendingClearAt;
+  lastKnownClearedAt = pendingClearAt;
   storageMode = hasSharedSync ? "shared" : "local";
   setSaveState(hasSharedSync ? "清空已保留，等待云端同步" : "已清空");
   return true;
@@ -632,7 +635,7 @@ async function loadSharedState() {
   }
 }
 
-function getSharedPayload() {
+function getSharedPayload(options = {}) {
   const products = getCurrentProductChanges();
   return {
     products,
@@ -640,6 +643,9 @@ function getSharedPayload() {
     dataRevision: sharedDataRevision,
     emptyIntent: products.length === 0 && Boolean(explicitClearAt),
     clearedAt: explicitClearAt || undefined,
+    baseClearedAt: lastKnownClearedAt || undefined,
+    restoreIntent: Boolean(options.restoreIntent),
+    clientRevision: "clear-guard-v1",
     updatedAt: new Date().toISOString(),
   };
 }
@@ -658,7 +664,7 @@ function queueSharedSave() {
   }, 520);
 }
 
-async function saveSharedState() {
+async function saveSharedState(options = {}) {
   if (storageMode !== "shared") return false;
 
   try {
@@ -669,8 +675,13 @@ async function saveSharedState() {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(getSharedPayload()),
+      body: JSON.stringify(getSharedPayload(options)),
     });
+    if (response.status === 409) {
+      setSaveState("云端已清空，旧页面写入已拦截");
+      await loadSharedState();
+      return false;
+    }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     setSaveState("已同步到云端");
     return true;
@@ -1123,7 +1134,7 @@ async function recoverFromLocalCache() {
   renderReviewHighlights();
 
   if (hasSharedSync) {
-    const saved = await saveSharedState();
+    const saved = await saveSharedState({ restoreIntent: true });
     if (!saved) {
       storageMode = "local";
       sessionStorage.setItem(recoveryPinnedKey, "true");
@@ -1150,7 +1161,7 @@ async function publishLocalCacheToCloud() {
   renderDepartmentPanels();
   renderReviewHighlights();
 
-  const saved = await saveSharedState();
+  const saved = await saveSharedState({ restoreIntent: true });
   if (saved) {
     sessionStorage.removeItem(recoveryPinnedKey);
     setSaveState("已发布到云端，常规链接可查看");
@@ -1180,6 +1191,7 @@ function clearAllContent() {
   productChanges = [];
   reviewDepartments = reviewDepartments.map((item) => ({ ...item, text: "" }));
   explicitClearAt = new Date().toISOString();
+  lastKnownClearedAt = explicitClearAt;
   localStorage.setItem(clearIntentStorageKey, explicitClearAt);
 
   if (hasSharedSync) {

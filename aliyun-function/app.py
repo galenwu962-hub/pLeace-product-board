@@ -12,6 +12,26 @@ ALLOWED_ORIGIN = os.environ.get(
 )
 
 
+def read_current_state():
+    if not STATE_FILE.exists():
+        return None
+    return json.loads(STATE_FILE.read_text(encoding="utf-8"))
+
+
+def is_stale_write_after_clear(current_state, payload):
+    current_clear_at = (current_state or {}).get("clearedAt")
+    incoming_products = payload.get("products") or []
+
+    return (
+        bool((current_state or {}).get("emptyIntent"))
+        and bool(current_clear_at)
+        and len(incoming_products) > 0
+        and not payload.get("emptyIntent")
+        and not payload.get("restoreIntent")
+        and payload.get("baseClearedAt") != current_clear_at
+    )
+
+
 class Handler(BaseHTTPRequestHandler):
     def send_json(self, status, payload):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -49,6 +69,17 @@ class Handler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
+            current_state = read_current_state()
+            if is_stale_write_after_clear(current_state, payload):
+                self.send_json(
+                    409,
+                    {
+                        "error": "stale_write_after_clear",
+                        "clearedAt": current_state.get("clearedAt"),
+                    },
+                )
+                return
+
             STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
             temporary = STATE_FILE.with_suffix(".tmp")
             temporary.write_text(

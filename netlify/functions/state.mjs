@@ -2,6 +2,7 @@ import { getStore } from "@netlify/blobs";
 
 const STORE_NAME = "deji-product-board-state";
 const STATE_KEY = "dashboard-state";
+const ACCEPTED_CLIENT_REVISIONS = new Set(["reliable-save-queue-v2"]);
 const ALLOWED_ORIGINS = new Set([
   "https://galenwu962-hub.github.io",
   "http://localhost:4176",
@@ -59,6 +60,12 @@ export default async (request) => {
 
     if (request.method === "PUT") {
       const payload = await request.json();
+      if (!ACCEPTED_CLIENT_REVISIONS.has(payload.clientRevision)) {
+        return jsonResponse(request, 409, {
+          error: "stale_client_revision",
+          acceptedClientRevisions: Array.from(ACCEPTED_CLIENT_REVISIONS),
+        });
+      }
       await store.setJSON(STATE_KEY, {
         ...payload,
         updatedAt: payload.updatedAt || new Date().toISOString(),

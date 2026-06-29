@@ -490,7 +490,9 @@ async function fetchSharedState(sharedApiUrl) {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 4200);
   try {
-    return await fetch(sharedApiUrl, { cache: "no-store", signal: controller.signal });
+    const url = new URL(sharedApiUrl);
+    url.searchParams.set("_", Date.now().toString());
+    return await fetch(url.toString(), { cache: "no-store", signal: controller.signal });
   } finally {
     window.clearTimeout(timeout);
   }

@@ -1176,6 +1176,7 @@ function setupLocalRecovery() {
 }
 
 function clearAllContent() {
+  localEditVersion += 1;
   productChanges = [];
   reviewDepartments = reviewDepartments.map((item) => ({ ...item, text: "" }));
   explicitClearAt = new Date().toISOString();

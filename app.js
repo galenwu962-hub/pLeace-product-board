@@ -646,6 +646,30 @@ async function saveSharedState(options = {}) {
     });
     if (response.status === 409) {
       const conflict = await response.json().catch(() => ({}));
+      // 后端尚未升级到合并版（只认旧 clientRevision）时，降级用旧 revision 重发，
+      // 保证保存不中断；新后端上线后首次 v3 即成功，自动切回服务端合并。
+      const acceptedRevisions = Array.isArray(conflict.acceptedClientRevisions) ? conflict.acceptedClientRevisions : [];
+      if (conflict.error === "stale_client_revision" && acceptedRevisions.length) {
+        const legacyRevision = acceptedRevisions.includes("reliable-save-queue-v2")
+          ? "reliable-save-queue-v2"
+          : acceptedRevisions[0];
+        const legacyResponse = await fetch(sharedApiUrl, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...payload, clientRevision: legacyRevision }),
+        });
+        if (legacyResponse.ok) {
+          const legacyState = await legacyResponse.json().catch(() => null);
+          sentDeletedIds.forEach((id) => pendingDeletedProductIds.delete(id));
+          rememberSharedState(legacyState && legacyState.dataRevision === sharedDataRevision ? legacyState : payload);
+          if (getCurrentProductChanges().length > 0) {
+            lastKnownClearedAt = null;
+            localStorage.removeItem(clearIntentStorageKey);
+          }
+          setSaveState("已同步到云端");
+          return true;
+        }
+      }
       const hasProductsToRestore = getCurrentProductChanges().length > 0;
       if (hasProductsToRestore && conflict.clearedAt) {
         lastKnownClearedAt = conflict.clearedAt;

@@ -119,7 +119,7 @@ export default async (request) => {
 
   try {
     if (request.method === "GET") {
-      const state = await store.get(STATE_KEY, { type: "json" });
+      const state = await store.get(STATE_KEY, { type: "json", consistency: "strong" });
       return jsonResponse(request, 200, state || emptyState());
     }
 
@@ -132,7 +132,7 @@ export default async (request) => {
         });
       }
 
-      const current = (await store.get(STATE_KEY, { type: "json" })) || emptyState();
+      const current = (await store.get(STATE_KEY, { type: "json", consistency: "strong" })) || emptyState();
       const now = new Date().toISOString();
       const nextRevision = (Number(current.revision) || 0) + 1;
 
